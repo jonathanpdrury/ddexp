@@ -1,11 +1,12 @@
 # Fit a model for which rates depends on a time-serie curve with regime specific parameters estimates.
 
-fit_t_general <- function(tree, data, fun, error=NULL, beta=NULL, sigma=NULL, model=c("exponential","linear"), maxdiff=0, method=c("L-BFGS-B","BB"), upper=Inf, lower=-20, control=list(maxit=20000), diagnostic=TRUE, echo=TRUE) {
+fit_t_general <- function(tree, data, fun, error=NULL, beta=NULL, sigma=NULL, model=c("exponential","linear"), method=c("L-BFGS-B","BB"), upper=Inf, lower=-20, control=list(maxit=20000), diagnostic=TRUE, echo=TRUE) {
   
   require(mvMORPH)
   if(!inherits(tree,"simmap")==TRUE) stop("For now only simmap-like mapped trees are allowed.","\n")
   
   # Parameters
+  if(!is.null(names(data))) data <- data[tree$tip.label]
   data<-as.matrix(data)
   method=method[1]
   rownames(data)<-tree$tip.label
@@ -34,8 +35,8 @@ fit_t_general <- function(tree, data, fun, error=NULL, beta=NULL, sigma=NULL, mo
   
   # check for simmap like format
   if(inherits(tree,"simmap")){
-   phy$mapped.edge<-phy$mapped.edge[ind,]
-   phy$maps<-phy$maps[ind]
+    phy$mapped.edge<-phy$mapped.edge[ind,]
+    phy$maps<-phy$maps[ind]
   }
   
   # Random starting value if not provided
@@ -51,7 +52,7 @@ fit_t_general <- function(tree, data, fun, error=NULL, beta=NULL, sigma=NULL, mo
     nbeta=length(beta)
     nsigma=length(sigma)
   }else if(model=="exponential"){
-    startval=c(beta,sigma)
+    startval=c(beta,log(sigma))
     nbeta=length(beta)
     nsigma=length(sigma)
   }
@@ -64,7 +65,7 @@ fit_t_general <- function(tree, data, fun, error=NULL, beta=NULL, sigma=NULL, mo
   }
   
   ##--------------Fonction-generale-DD-Env-------------------------------------------##
-
+  
   BranchtransformMAPS<-function(phy,beta,mtot,times,fun,sigma=NULL,model=NULL,errorValue=NULL){
     #Transformations
     tips <- length(phy$tip.label)
@@ -93,7 +94,13 @@ fit_t_general <- function(tree, data, fun, error=NULL, beta=NULL, sigma=NULL, mo
         sig<-sigma[regimenumber]          # select the corresponding parameter for sigma
         bl<-currentmap[[betaval]]         # branch length under the current map
         
-        tempbeta <- integrate(f, lower=age, upper=(age + bl), subdivisions=500, rel.tol = .Machine$double.eps^0.05, sigma=sig, beta=bet, funInd=regimenumber)$val
+        int <- try(integrate(f, lower=age, upper=(age + bl), subdivisions=500, rel.tol = .Machine$double.eps^0.05, sigma=sig, beta=bet, funInd=regimenumber), silent=TRUE)
+                        if(inherits(int ,'try-error')){
+                          warning("An error occured during numerical integration. The integral is probably divergent or your function is maybe undefined for some values")
+                          tempbeta <- NA_real_
+                        } else {
+                          tempbeta <- int$value
+                        }
         tempedge[betaval] <- tempbeta 
         # on met à jour age parcequ'on va passer au maps suivant pour la lignée i
         # update "age" because we're moving to the next map for lineage i.
@@ -118,7 +125,7 @@ fit_t_general <- function(tree, data, fun, error=NULL, beta=NULL, sigma=NULL, mo
     
     if(model=="exponential"){
       beta<-param[seq_len(nbeta)]
-      sigma<-param[nbeta+seq_len(nsigma)]
+      sigma<-exp(param[nbeta+seq_len(nsigma)])
       if(!is.null(error)) errorValue <- param[nbeta+nsigma+1] else errorValue <- NULL
       phylo <- BranchtransformMAPS(phylo, beta, mtot, times, fun, sigma, model, errorValue)
       
@@ -150,16 +157,16 @@ fit_t_general <- function(tree, data, fun, error=NULL, beta=NULL, sigma=NULL, mo
   }else if(method=="L-BFGS-B" | method=="Nelder-Mead"){
     estim<-optim(par=startval,fn=function(par){clikCLIM(param=par,dat=data,phy,mtot=mtot,times=times,fun=fun,model)},control=control, hessian=TRUE, method=method, lower=lower, upper=upper)
   }else if(method=="fixed"){
-      estim <- list()
-      estim$par <- c(beta,sigma)
-      estim$value <- clikCLIM(param=estim$par,dat=data,phy,mtot=mtot,times=times,fun=fun,model)
-      estim$convergence <- 0
-      phyloTrans <- BranchtransformMAPS(phy, beta, mtot, times, fun, sigma, model, errorValue=NULL)
+    estim <- list()
+    estim$par <- c(beta,log(sigma))
+    estim$value <- clikCLIM(param=estim$par,dat=data,phy,mtot=mtot,times=times,fun=fun,model)
+    estim$convergence <- 0
+    phyloTrans <- BranchtransformMAPS(phy, beta, mtot, times, fun, sigma, model, errorValue=NULL)
   }
   
   # Results
   if(model=="exponential"){
-    resultList<-matrix(c(estim$par[seq_len(nsigma+nbeta)]),ncol=nbeta, byrow=T)
+    resultList<-matrix(c(estim$par[seq_len(nbeta)],exp(estim$par[nbeta+seq_len(nsigma)])),ncol=nbeta, byrow=T)
     colnames(resultList)<-c(colnames(tree$mapped.edge))
     rownames(resultList)<-c("beta","sigma")
   }else{
@@ -167,9 +174,9 @@ fit_t_general <- function(tree, data, fun, error=NULL, beta=NULL, sigma=NULL, mo
     colnames(resultList)<-c(colnames(tree$mapped.edge))
     rownames(resultList)<-c("beta","sigma")
   }
-
+  
   if(!is.null(error)) errorValue <- estim$par[nsigma+nbeta+1]^2 else errorValue <- NULL
-    
+  
   # LogLikelihood
   LL<--estim$value
   # parameter (anc + sigma)
@@ -186,7 +193,7 @@ fit_t_general <- function(tree, data, fun, error=NULL, beta=NULL, sigma=NULL, mo
   
   #ancestral states estimates
   anc<-clikCLIM(param=estim$par, dat=data, phy, mtot, times, fun=fun, model, results=TRUE)$mu
-
+  
   ##---------------------Diagnostics--------------------------------------------##
   
   if(estim$convergence==0 & diagnostic==TRUE){
@@ -200,12 +207,12 @@ fit_t_general <- function(tree, data, fun, error=NULL, beta=NULL, sigma=NULL, mo
   # Hessian eigen decomposition to check the derivatives
   if(method=="BB"){
     require(numDeriv)
-    hmat<-hessian(x=estim$par, func=clikCLIM, dat=data, phylo=phy, mtot=mtot, times=times, fun=fun, model=model)
+    hmat<-hessian(x=estim$par, func=function(par){clikCLIM(param=par,dat=data,phy,mtot=mtot,times=times,fun=fun,model)$LL})
     hess<-eigen(hmat)$value
   }else if(method=="L-BFGS-B" | method=="Nelder-Mead"){
     hess<-eigen(estim$hessian)$values
   }else{
-      hess<-0
+    hess<-0
   }
   if(any(hess<0)){
     hess.value<-1
@@ -244,127 +251,3 @@ fit_t_general <- function(tree, data, fun, error=NULL, beta=NULL, sigma=NULL, mo
 }
 
 
-
-
-
-
-
-
-
-
-### ----------------- some quick and dirty tests
-#library(mvMORPH)
-#
-## Simulated dataset
-#set.seed(14)
-## Generating a random tree
-#tree<-pbtree(n=500)
-#
-## Setting the regime states of tip species
-#sta<-as.vector(c(rep("Forest",250),rep("Savannah",250))); names(sta)<-tree$tip.label
-#
-## Making the simmap tree with mapped states
-#tree<-make.simmap(tree,sta , model="ER", nsim=1)
-#col<-c("blue","orange"); names(col)<-c("Forest","Savannah")
-#
-## Plot of the phylogeny for illustration
-#plotSimmap(tree,col,fsize=0.6,node.numbers=FALSE,lwd=3, pts=FALSE)
-#
-## Simulate the traits
-#sigma<-10
-#theta<-0
-#data<-mvSIM(tree, param=list(sigma=sigma, theta=theta,
-#                             model="BM1", nsim=1))
-#
-### Fitting the models
-## BMM - Analysis with multiple rates
-#mvBM(tree, data)
-#
-## Make a climatic curve
-#require(RPANDA)
-#require(pspline)
-#data(Cetacea)
-#data(InfTemp)
-#spline_result <- sm.spline(x=InfTemp[,1],y=InfTemp[,2], df=50)
-#env_func <- function(t){predict(spline_result,t)}
-#t<-unique(InfTemp[,1])
-#
-## We build the interpolated smoothing spline function
-### 1st function
-#env_data<-splinefun(t,env_func(t))
-#
-### 2nd function
-#maxtime = max(branching.times(tree))
-#my_fun_ebac <- function(t){
-#  time = (maxtime - t)
-#  return(time)
-#}
-#
-## combined
-#funclimeb <- list(env_data, my_fun_ebac)
-#
-## let's check
-#my_fun1 <- funclimeb[[1]]
-#curve(my_fun1, 0, maxtime)
-#
-#my_fun2 <- funclimeb[[2]]
-#curve(my_fun2, 0, maxtime)
-#
-## Fit the models
-#fit_t_general(tree, data, fun=funclimeb)
-#fit_t_general(tree, data, fun=funclimeb, model="exponential", error=NA)
-#fit_t_general(tree, data, fun=funclimeb, model="exponential", error=NA, method="Nelder-Mead")
-#fit_t_general(tree, data, fun=funclimeb, model="linear") 
-##fit_t_general(tree, data, fun=env_data, method="BB") # problem to solve
-#
-#
-#
-## Make a DD function?
-#node_Heights<-nodeHeights(tree)
-#maxval<- max(node_Heights)
-#times<-maxval-node_Heights[match(1:tree$Nnode+length(tree$tip),tree$edge[,1]),1]
-## Set the root to zero
-#times<-maxval-times
-#branching<-sort(c(times,maxval))
-## Extra label for the interval computation
-#names(branching)<-length(tree$tip.label):(length(tree$tip)*2-1)
-## Number of species
-#tips <- length(tree$tip.label)
-## Diversity index
-#N <- 2:tips
-#names(N) <- sort(times)
-#
-#funN <- function(x){
-#  values <- as.numeric(names(N))
-#  res <- findInterval(x, values)
-#  index <- res==0
-#  res[index==TRUE] <- 1
-#  return(N[res])
-#}
-#
-## Let's have a look
-#curve(funN, 0, maxval)
-#  
-## Make an interpolation for a smooth function? I think something along these lines...
-## I think that the interpolated function will be faster than using the above one that call "findInterval"
-##  t_fun <- seq(0,maxval, length.out=100)
-##  funN2=splinefun(t_fun,funN(t_fun))
-##  curve(funN2, 0, maxval)
-#
-#
-## Let's try (first function for the first regime, second function for the second regime... and so on)
-#new_list_function <- list(Envfunction=env_data, DDfunction=funN2)
-#
-## Fit the models
-#fit_t_general(tree, data, fun=new_list_function)
-#fit_t_general(tree, data, fun=new_list_function, model="exponential", error=NA)
-#fit_t_general(tree, data, fun=new_list_function, model="exponential", error=NA, method="Nelder-Mead")
-#fit_t_general(tree, data, fun=new_list_function, model="linear") 
-#
-#
-### NOTE: I have to change the code for the environmental dependent or the DD, because it currently assume that t=0 is the present day
-## and tmax is in the past. So the funN function above is wrong... maybe a simple way to deal with that for now is to do something like that:
-#funN3 <- function(x) funN2(maxval-x)
-#curve(funN3,0,maxval)
-#
-## Not sure yet...
