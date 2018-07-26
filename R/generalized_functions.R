@@ -84,7 +84,7 @@ events_txt_list_into_events_table<-function(events_txt_list, trtable=NULL, recal
 	for (i in 1:length(events_txt_list))
 		{
 		#print(events_txt_list)
-		tmptable_rows = .events_txt_into_events_table(events_txt_list[i])
+		tmptable_rows = events_txt_into_events_table(events_txt_list[i])
 		rownums_in_trtable = as.numeric(tmptable_rows$nodenum_at_top_of_branch)
 		#print(tmptable_rows)
 		num_newrows = nrow(tmptable_rows)
@@ -100,7 +100,7 @@ events_txt_into_events_table<-function(branch_events_txt)
 	{
 	words = strsplit(branch_events_txt, split=";")[[1]]
 	
-	events_table_for_branch = t(sapply(X=words, FUN=.event_txt_into_events_row))
+	events_table_for_branch = t(sapply(X=words, FUN=event_txt_into_events_row))
 	row.names(events_table_for_branch) = NULL
 	events_table_for_branch
 	

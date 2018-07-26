@@ -25,7 +25,7 @@ get.lineage.vec<-function(tree,node){
 }
 
 
-CreateBioGeoB_Object_subclade<-function(anc.phylo,subclade.phylo,ana.events,clado.events,nat.only=FALSE){
+CreateBioGeoB_Object_subclade<-function(anc.phylo,subclade.phylo,ana.events,clado.events,nat.only=FALSE,collapse=TRUE){
 	if(!all(subclade.phylo$tip.label%in%anc.phylo$tip.label)){stop("ERROR: subclade tree contains tips missing from full phylogeny")}
 	phylo<-subclade.phylo
 	subclade.tips<-phylo$tip.label
@@ -272,7 +272,7 @@ CreateBioGeoB_Object_subclade<-function(anc.phylo,subclade.phylo,ana.events,clad
 				}
 			}
 			int.mat[upper.tri(int.mat)==TRUE]<-t(int.mat)[upper.tri(t(int.mat))==TRUE]
-			if(count>1 && !is.character(all.equal(int.mat,geography.matrix[[count-1]]))){coll.vector<-c(coll.vector,i)} else{	
+			if(collapse && count>1 && !is.character(all.equal(int.mat,geography.matrix[[count-1]]))){coll.vector<-c(coll.vector,i)} else{	
 			geography.matrix[[count]]<-int.mat
 			count=count+1
 			}
