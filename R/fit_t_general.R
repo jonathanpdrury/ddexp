@@ -42,6 +42,7 @@ fit_t_general <- function(tree, data, fun, error=NULL, beta=NULL, sigma=NULL, mo
     phy$mapped.edge<-phy$mapped.edge[ind,]
     phy$maps<-phy$maps[ind]
   }
+  #phy <- reorderSimmap(tree, order="pruningwise")
   
   # Random starting value if not provided
   if(is.null(beta)){
@@ -80,7 +81,9 @@ fit_t_general <- function(tree, data, fun, error=NULL, beta=NULL, sigma=NULL, mo
       # this will only work in the constraint=TRUE instance
       if(constraint){
       #f<-function(x, sigma, beta, funInd){(sigma*sum(exp(beta*fun[[funInd]](x))))/length(fun[[funInd]](x))}
-      f<-function(x, sigma, beta, funInd){(sigma*rowSums(exp(beta*fun[[funInd]](x))))/ncol(fun[[funInd]](x))}
+      #f<-function(x, sigma, beta, funInd){(sigma*rowSums(exp(beta*fun[[funInd]](x))))/ncol(fun[[funInd]](x))}
+     # f<-function(x, sigma, beta, funInd){sigma*(rowSums(exp(beta*fun[[funInd]](x)))/ncol(fun[[funInd]](x)))}
+        f<-function(x, sigma, beta, funInd){sigma*exp(beta*as.numeric(fun[[funInd]](x)))}
       } else{
       f<-function(x, sigma, beta, funInd){sigma*exp(beta*fun[[funInd]](x))}
       }
