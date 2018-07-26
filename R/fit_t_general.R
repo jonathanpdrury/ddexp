@@ -90,7 +90,7 @@ fit_t_general <- function(tree, data, fun, error=NULL, beta=NULL, sigma=NULL, mo
     }else if(model=="linear"){
       # Clim-lin function
       if(constraint){
-      f<-function(x, sigma, beta, funInd){1/ncol(fun[[funInd]](x))*(rowSums(sigma+(beta*fun[[funInd]](x))))}
+      f<-function(x, sigma, beta, funInd){sigma+beta*as.numeric(fun[[funInd]](x))}
       } else{
       f<-function(x, sigma, beta, funInd){sigma+beta*fun[[funInd]](x)}
       }
