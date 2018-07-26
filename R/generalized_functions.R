@@ -20,8 +20,13 @@ return.class.df<-function(simmap,class.object){
 ##note, if geo.class.object and geo.class.df are named differently, this won't work (fix this)
 
 create.function.list<-function(geo.simmap, geo.class.object,class.df){
+	if(is.null(geo.simmap)){stop('provide geo.simmap')}
+	if(is.null(geo.class.object)){stop('provide geo.class.object')}
+	if(is.null(class.df)){stop('provide class.df')}
+	if(is.null(geo.class.object$times)){stop('$times missing from geo.class.object')}
 	states<-colnames(geo.simmap$mapped.edge)
 	funlist<-list()
+	if(dim(class.df)[2]!=(length(states)+1)){stop('class.df is of incorrect dimensions')}
 	
 	for(i in 1:length(states)){
 		st<-states[i]
@@ -38,7 +43,7 @@ create.function.list<-function(geo.simmap, geo.class.object,class.df){
 ###below are other functions from BioGeoBEARS
 
 #code from Nick Matzke's code on BioGeoBEARS wiki
-.events_txt_list_into_events_table<-function(events_txt_list, trtable=NULL, recalc_abs_ages=TRUE)
+events_txt_list_into_events_table<-function(events_txt_list, trtable=NULL, recalc_abs_ages=TRUE)
 	{
 	
 	if (is.null(events_txt_list))
@@ -91,7 +96,7 @@ create.function.list<-function(geo.simmap, geo.class.object,class.df){
 	return(events_table)
 	}
 
-.events_txt_into_events_table<-function(branch_events_txt)
+events_txt_into_events_table<-function(branch_events_txt)
 	{
 	words = strsplit(branch_events_txt, split=";")[[1]]
 	
@@ -106,7 +111,7 @@ create.function.list<-function(geo.simmap, geo.class.object,class.df){
 	return(events_table_for_branch)
 	}
 
-.event_txt_into_events_row<-function(word)
+event_txt_into_events_row<-function(word)
 	{
 
 	split_key_item<-function(word2)
