@@ -1,6 +1,6 @@
 # Fit a model for which rates depends on a time-serie curve with regime specific parameters estimates.
 
-fit_t_general <- function(tree, data, fun, error=NULL, beta=NULL, sigma=NULL, model=c("exponential","linear"), method=c("L-BFGS-B","BB"), upper=Inf, lower=-20, control=list(maxit=20000), diagnostic=TRUE, echo=TRUE) {
+fit_t_general <- function(tree, data, fun, error=NULL, beta=NULL, sigma=NULL, model=c("exponential","linear"), method=c("L-BFGS-B","BB"), upper=Inf, lower=-20, control=list(maxit=20000), diagnostic=TRUE, echo=TRUE, constraint=TRUE) {
   
   require(mvMORPH)
   if(!inherits(tree,"simmap")==TRUE) stop("For now only simmap-like mapped trees are allowed.","\n")
@@ -25,7 +25,11 @@ fit_t_general <- function(tree, data, fun, error=NULL, beta=NULL, sigma=NULL, mo
   # Number of traits (for future versions)
   k=1
   # Number of maps (selective regimes)
-  number_maps <- ncol(tree$mapped.edge)
+  if(constraint){
+      number_maps <- 1
+  }else{
+      number_maps <- ncol(tree$mapped.edge)
+  }
   
   # Param likelihood contrasts (we are organizing the tree to be postorder for an efficient traversal)
   ind=reorder(tree,"postorder",index.only=TRUE)
@@ -90,8 +94,14 @@ fit_t_general <- function(tree, data, fun, error=NULL, beta=NULL, sigma=NULL, mo
       # loop pour traverser les "maps"
       for(betaval in 1:indlength){
         regimenumber <- which(colnames(phy$mapped.edge)==names(currentmap)[betaval])  # retrieve the regimes within maps
-        bet<-beta[regimenumber]           # select the corresponding parameter for beta
-        sig<-sigma[regimenumber]          # select the corresponding parameter for sigma
+        if(constraint){
+            bet <- beta
+            sig <- sigma
+        }else{
+            bet<-beta[regimenumber]           # select the corresponding parameter for beta
+            sig<-sigma[regimenumber]          # select the corresponding parameter for
+        }
+        sigma
         bl<-currentmap[[betaval]]         # branch length under the current map
         
         int <- try(integrate(f, lower=age, upper=(age + bl), subdivisions=500, rel.tol = .Machine$double.eps^0.05, sigma=sig, beta=bet, funInd=regimenumber), silent=TRUE)
@@ -167,11 +177,11 @@ fit_t_general <- function(tree, data, fun, error=NULL, beta=NULL, sigma=NULL, mo
   # Results
   if(model=="exponential"){
     resultList<-matrix(c(estim$par[seq_len(nbeta)],exp(estim$par[nbeta+seq_len(nsigma)])),ncol=nbeta, byrow=T)
-    colnames(resultList)<-c(colnames(tree$mapped.edge))
+    if(constraint==FALSE) colnames(resultList)<-c(colnames(tree$mapped.edge))
     rownames(resultList)<-c("beta","sigma")
   }else{
     resultList<-matrix(estim$par[seq_len(nsigma+nbeta)],ncol=nbeta, byrow=T)
-    colnames(resultList)<-c(colnames(tree$mapped.edge))
+    if(constraint==FALSE) colnames(resultList)<-c(colnames(tree$mapped.edge))
     rownames(resultList)<-c("beta","sigma")
   }
   
@@ -207,8 +217,9 @@ fit_t_general <- function(tree, data, fun, error=NULL, beta=NULL, sigma=NULL, mo
   # Hessian eigen decomposition to check the derivatives
   if(method=="BB"){
     require(numDeriv)
-    hmat<-hessian(x=estim$par, func=function(par){clikCLIM(param=par,dat=data,phy,mtot=mtot,times=times,fun=fun,model)$LL})
-    hess<-eigen(hmat)$value
+    #hmat<-hessian(x=estim$par, func=function(par){clikCLIM(param=par,dat=data,phy,mtot=mtot,times=times,fun=fun,model)$LL})
+    #hess<-eigen(hmat)$value
+    hess <- 0
   }else if(method=="L-BFGS-B" | method=="Nelder-Mead"){
     hess<-eigen(estim$hessian)$values
   }else{
