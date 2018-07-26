@@ -17,7 +17,6 @@ return.class.df<-function(simmap,class.object){
 }
 
 ##this is a generalizable function to flexibly return a list of functions (to pass to fit_t_general*) for any geo.simmap
-##note, if geo.class.object and geo.class.df are named differently, this won't work (fix this)
 
 create.function.list<-function(geo.simmap, geo.class.object,class.df){
 	if(is.null(geo.simmap)){stop('provide geo.simmap')}
