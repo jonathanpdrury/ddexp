@@ -77,10 +77,20 @@ fit_t_general <- function(tree, data, fun, error=NULL, beta=NULL, sigma=NULL, mo
     
     if(model=="exponential"){  
       # because "times" assume that the root state is at 0 and funEnv is from the past to the present.
+      # this will only work in the constraint=TRUE instance
+      if(constraint){
+      #f<-function(x, sigma, beta, funInd){(sigma*sum(exp(beta*fun[[funInd]](x))))/length(fun[[funInd]](x))}
+      f<-function(x, sigma, beta, funInd){(sigma*rowSums(exp(beta*fun[[funInd]](x))))/ncol(fun[[funInd]](x))}
+      } else{
       f<-function(x, sigma, beta, funInd){sigma*exp(beta*fun[[funInd]](x))}
+      }
     }else if(model=="linear"){
       # Clim-lin function
+      if(constraint){
+      f<-function(x, sigma, beta, funInd){1/ncol(fun[[funInd]](x))*(rowSums(sigma+(beta*fun[[funInd]](x))))}
+      } else{
       f<-function(x, sigma, beta, funInd){sigma+beta*fun[[funInd]](x)}
+      }
     }
     
     # Loops over the edges
