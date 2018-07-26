@@ -83,14 +83,14 @@ fit_t_general <- function(tree, data, fun, error=NULL, beta=NULL, sigma=NULL, mo
       #f<-function(x, sigma, beta, funInd){(sigma*sum(exp(beta*fun[[funInd]](x))))/length(fun[[funInd]](x))}
       #f<-function(x, sigma, beta, funInd){(sigma*rowSums(exp(beta*fun[[funInd]](x))))/ncol(fun[[funInd]](x))}
      # f<-function(x, sigma, beta, funInd){sigma*(rowSums(exp(beta*fun[[funInd]](x)))/ncol(fun[[funInd]](x)))}
-        f<-function(x, sigma, beta, funInd){sigma*exp(beta*as.numeric(fun[[funInd]](x)))}
+        f<-function(x, sigma, beta, funInd){sigma*exp(beta*fun[[funInd]](x))}
       } else{
       f<-function(x, sigma, beta, funInd){sigma*exp(beta*fun[[funInd]](x))}
       }
     }else if(model=="linear"){
       # Clim-lin function
       if(constraint){
-      f<-function(x, sigma, beta, funInd){sigma+beta*as.numeric(fun[[funInd]](x))}
+      f<-function(x, sigma, beta, funInd){sigma+beta*fun[[funInd]](x)}
       } else{
       f<-function(x, sigma, beta, funInd){sigma+beta*fun[[funInd]](x)}
       }
