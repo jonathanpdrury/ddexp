@@ -72,10 +72,10 @@ fit_t_general <- function(tree, data, fun, error=NULL, beta=NULL, sigma=NULL, mo
     
     if(model=="exponential"){  
       # because "times" assume that the root state is at 0 and funEnv is from the past to the present.
-      f<-function(x, sigma, beta){sigma*exp(beta*fun((mtot+maxdiff)-x))}
+      f<-function(x, sigma, beta, funInd){sigma*exp(beta*fun[[funInd]]((mtot+maxdiff)-x))}
     }else if(model=="linear"){
       # Clim-lin function
-      f<-function(x, sigma, beta){sigma+beta*fun((mtot+maxdiff)-x)}
+      f<-function(x, sigma, beta, funInd){sigma+beta*fun[[funInd]]((mtot+maxdiff)-x)}
     }
     
     # Loops over the edges
@@ -93,7 +93,7 @@ fit_t_general <- function(tree, data, fun, error=NULL, beta=NULL, sigma=NULL, mo
         sig<-sigma[regimenumber]          # select the corresponding parameter for sigma
         bl<-currentmap[[betaval]]         # branch length under the current map
         
-        tempbeta <- integrate(f, lower=age, upper=(age + bl), subdivisions=200, rel.tol = .Machine$double.eps^0.05, sigma=sig, beta=bet)$val
+        tempbeta <- integrate(f, lower=age, upper=(age + bl), subdivisions=200, rel.tol = .Machine$double.eps^0.05, sigma=sig, beta=bet, funInd=regimenumber)$val
         tempedge[betaval] <- tempbeta 
         # on met à jour age parcequ'on va passer au maps suivant pour la lignée i
         # update "age" because we're moving to the next map for lineage i.
@@ -281,86 +281,81 @@ env_func <- function(t){predict(spline_result,t)}
 t<-unique(InfTemp[,1])
 
 # We build the interpolated smoothing spline function
+## 1st function
 env_data<-splinefun(t,env_func(t))
 
-
-# Fit the models
-fit_t_general(tree, data, fun=env_data)
-fit_t_general(tree, data, fun=env_data, model="exponential", error=NA)
-fit_t_general(tree, data, fun=env_data, model="exponential", error=NA, method="Nelder-Mead")
-fit_t_general(tree, data, fun=env_data, model="linear") 
-#fit_t_general(tree, data, fun=env_data, method="BB") # problem to solve
-
-
-# We define the function for the Early-Burst/AC model:
-# sigma^2*e^(r*fun(t))
+## 2nd function
 maxtime = max(branching.times(tree))
 my_fun_ebac <- function(t){
   time = (maxtime - t)
   return(time)
 }
 
-fit_t_general(tree, data, fun=my_fun_ebac)
-fit_t_general(tree, data, fun=my_fun_ebac, error=NA) # estimates the error
+# combined
+funclimeb <- list(env_data, my_fun_ebac)
 
+# let's check
+my_fun1 <- funclimeb[[1]]
+curve(my_fun1, 0, maxtime)
 
-
-
-
-### ------ Let's try with a 2000 tips tree
-set.seed(14)
-# Generating a random tree
-tree<-pbtree(n=2000, scale=50)
-
-# Setting the regime states of tip species
-sta<-as.vector(c(rep("Forest",1000),rep("Savannah",1000))); names(sta)<-tree$tip.label
-
-# Making the simmap tree with mapped states
-tree<-make.simmap(tree,sta , model="ER", nsim=1)
-col<-c("blue","orange"); names(col)<-c("Forest","Savannah")
-
-# Plot of the phylogeny for illustration
-plotSimmap(tree,col,fsize=0.6,node.numbers=FALSE,lwd=3, pts=FALSE)
-
-# Simulate the traits
-sigma<-10
-theta<-0
-data<-mvSIM(tree, param=list(sigma=sigma, theta=theta,
-                             model="BM1", nsim=1))
-
-## Fitting the models
-# BMM - Analysis with multiple rates
-mvBM(tree, data)
-
-# Make a climatic curve
-require(RPANDA)
-require(pspline)
-data(Cetacea)
-data(InfTemp)
-spline_result <- sm.spline(x=InfTemp[,1],y=InfTemp[,2], df=50)
-env_func <- function(t){predict(spline_result,t)}
-t<-unique(InfTemp[,1])
-
-# We build the interpolated smoothing spline function
-env_data<-splinefun(t,env_func(t))
-
+my_fun2 <- funclimeb[[2]]
+curve(my_fun2, 0, maxtime)
 
 # Fit the models
-system.time(fit_t_general(tree, data, fun=env_data))
-fit_t_general(tree, data, fun=env_data, model="exponential", error=NA)
+fit_t_general(tree, data, fun=funclimeb)
+fit_t_general(tree, data, fun=funclimeb, model="exponential", error=NA)
+fit_t_general(tree, data, fun=funclimeb, model="exponential", error=NA, method="Nelder-Mead")
+fit_t_general(tree, data, fun=funclimeb, model="linear") 
+#fit_t_general(tree, data, fun=env_data, method="BB") # problem to solve
 
 
-## ---------------------------- test with three regimes
-# Setting the regime states of tip species
-sta<-as.vector(c(rep("Forest",1000),rep("Savannah",500),rep("Mountain",500))); names(sta)<-tree$tip.label
 
-# Making the simmap tree with mapped states
-tree<-make.simmap(tree,sta , model="ER", nsim=1)
-col<-c("blue","orange","green"); names(col)<-c("Forest","Savannah","Mountain")
+# Make a DD function?
+node_Heights<-nodeHeights(tree)
+maxval<- max(node_Heights)
+times<-maxval-node_Heights[match(1:tree$Nnode+length(tree$tip),tree$edge[,1]),1]
+# Set the root to zero
+times<-maxval-times
+branching<-sort(c(times,maxval))
+# Extra label for the interval computation
+names(branching)<-length(tree$tip.label):(length(tree$tip)*2-1)
+# Number of species
+tips <- length(tree$tip.label)
+# Diversity index
+N <- 2:tips
+names(N) <- sort(times)
 
-# Plot of the phylogeny for illustration
-plotSimmap(tree,col,fsize=0.6,node.numbers=FALSE,lwd=3, pts=FALSE)
+funN <- function(x){
+  values <- as.numeric(names(N))
+  res <- findInterval(x, values)
+  index <- res==0
+  res[index==TRUE] <- 1
+  return(N[res])
+}
 
-# test with three categories
-fit_t_general(tree, data, fun=env_data, model="exponential", method="Nelder-Mead")
-fit_t_general(tree, data, fun=env_data, model="exponential", method="L-BFGS-B")
+# Let's have a look
+curve(funN, 0, maxval)
+  
+# Make an interpolation for a smooth function? I think something along these lines...
+# I think that the interpolated function will be faster than using the above one that call "findInterval"
+#  t_fun <- seq(0,maxval, length.out=100)
+#  funN2=splinefun(t_fun,funN(t_fun))
+#  curve(funN2, 0, maxval)
+
+
+# Let's try (first function for the first regime, second function for the second regime... and so on)
+new_list_function <- list(Envfunction=env_data, DDfunction=funN2)
+
+# Fit the models
+fit_t_general(tree, data, fun=new_list_function)
+fit_t_general(tree, data, fun=new_list_function, model="exponential", error=NA)
+fit_t_general(tree, data, fun=new_list_function, model="exponential", error=NA, method="Nelder-Mead")
+fit_t_general(tree, data, fun=new_list_function, model="linear") 
+
+
+## NOTE: I have to change the code for the environmental dependent or the DD, because it currently assume that t=0 is the present day
+# and tmax is in the past. So the funN function above is wrong... maybe a simple way to deal with that for now is to do something like that:
+funN3 <- function(x) funN2(maxval-x)
+curve(funN3,0,maxval)
+
+# Not sure yet...
