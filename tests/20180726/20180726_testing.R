@@ -60,6 +60,7 @@ fit_t_comp(anole.data[[1]],anole.data[[3]],model="DDexp",geography.object=anole.
 
 
 ###MOTMOT (non-mutually exclusive biogeography) testing
+load('motmot.data.Rd')
 
 smap<-stratified_BGB_to_tables(motmot.data[[1]],motmot.data[[2]],1)
 geo.object<-CreateBioGeoB_Object_subclade(anc.phylo=motmot.data[[1]],subclade.phylo=motmot.data[[1]],ana.events=smap$ana.int,clado.events=smap$clado.int)
@@ -117,7 +118,8 @@ fit_t_general(out$geo.simmap,motmot.data[[3]],fun=new_list_function)
 
 
 
-##testing with tanagers, 100 tips culled from tree
+##TANAGERS testing with complex biogeography, 100 tips culled from tree
+load('tanager.data.Rd')
 
 
 tanager.tree.trimmed<-drop.tip(tanager.data[[1]],tanager.data[[1]]$tip.label[101:323])
