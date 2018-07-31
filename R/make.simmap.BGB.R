@@ -262,10 +262,22 @@ make.simmap.BGB<-function(anc.phylo,subclade.phylo,ana.events,clado.events){
 		names(out.vec)<-name.vec
 		
 		#sum adjacent elements with the same name
-
+		
+		out.vec.simple<-vector()
+		counter=1
+		for(i in 1: length(out.vec)){
+			if(i == 1 || i == (counter+1)){
+				while((length(out.vec)>counter) && (names(out.vec[i])==names(out.vec[counter+1]))){
+					counter=counter+1
+					}
+				hold<-sum(out.vec[i:counter])
+				names(hold)<-names(out.vec[i])
+				out.vec.simple<-c(out.vec.simple,hold)	
+				}
+		}
 		
 		
-		maps.list[[k]]<-out.vec
+		maps.list[[k]]<-out.vec.simple
 	
 	}
 
@@ -281,5 +293,11 @@ make.simmap.BGB<-function(anc.phylo,subclade.phylo,ana.events,clado.events){
 	
 	out<-list(edge=phylo$edge,edge.length=phylo$edge.length,tip.label=phylo$tip.label,Nnode=subclade.phylo$Nnode,maps=maps.list,mapped.edge=mapped.edge,Q="NA",logL="NA")
 	class(out)<-c("phylo","simmap")
-	return(list(geo.simmap=out,class.object=list(class.object=nat,times=nodeDist,spans=nodeDiff)))
+	
+	if(anc.phylo==subclade.phylo){
+		class.object=list(class.object=nat,times=nodeDist,spans=nodeDiff)
+	} else {
+		class.object=RPANDA::CreateClassObject(out)
+	}
+	return(list(geo.simmap=out,class.object=class.object))
 	}
