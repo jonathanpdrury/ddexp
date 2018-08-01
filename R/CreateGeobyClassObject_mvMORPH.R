@@ -1,6 +1,6 @@
 #This is a wrapper script that merges a class object and a geographic stochastic map from BioGeoBEARS 
 ##OUTPUTS geo.simmap, geo.class.object, and subgroup.class.object
-##in geo.class.object, range is replaced with 'allo' if it is not in subgroup identified by trim class at that time step
+##in geo.class.object, range is replaced with 'Z' if it is not in subgroup identified by trim class at that time step
 
 #The inputs are:
 #phylo (phylogeny used to build ancestral range stochastic map) 
@@ -24,7 +24,7 @@ class.object<-CreateClassObject(new.map)
 #geo.object<-CreateBioGeoB_Object_subclade(phylo,new.map,ana.events,clado.events)
 ##need this to return geo.simmap, too
 
-out<-make.simmap.BGB(phylo,new.map,ana.events,clado.events)
+out<-make.simmap.BGB(phylo,new.map,ana.events,clado.events,return.mat=TRUE)
 geo.simmap<-out$geo.simmap
 geo.class.object<-out$class.object
 
@@ -53,7 +53,7 @@ for(i in 1:length(nodeDiff)){
 		y = y+1
 		class.int<-class.object$class.object[[u]]
 		geo.int<-geo.class.object$class.object[[y]]
-		geo.int[which(class.int[,2]!=trc),2]<-'allo'
+		geo.int[which(class.int[,2]!=trc),2]<-'Z'
 		hold.class[[i]]<-class.int
 		hold.geo[[i]]<-geo.int
 	}
@@ -61,7 +61,7 @@ for(i in 1:length(nodeDiff)){
 		y = y+1
 		class.int<-class.object$class.object[[u]]
 		geo.int<-geo.class.object$class.object[[y]]
-		geo.int[which(class.int[,2]!=trc),2]<-'allo'
+		geo.int[which(class.int[,2]!=trc),2]<-'Z'
 		hold.class[[i]]<-class.int
 		hold.geo[[i]]<-geo.int
 	}
@@ -69,12 +69,72 @@ for(i in 1:length(nodeDiff)){
 		u = u+1
 		class.int<-class.object$class.object[[u]]
 		geo.int<-geo.class.object$class.object[[y]]
-		geo.int[which(class.int[,2]!=trc),2]<-'allo'
+		geo.int[which(class.int[,2]!=trc),2]<-'Z'
 		hold.class[[i]]<-class.int
 		hold.geo[[i]]<-geo.int
 	}
 	}
 
+
+##update geo.simmap to add 'Z' to allopatric times
+
+
+	phylo<-geo.simmap
+	mat<-out$mat
+	maps.list=list()
 	
-return(list(subgroup.simmap=new.map,subgroup.class.object=list(class.object=hold.class,times=nodeDist,spans=nodeDiff),geo.simmap=geo.simmap,geo.class.object=list(class.object=hold.geo,times=nodeDist,spans=nodeDiff)))#new phylo object, #new times, #new spans, #new geo object
+	for(k in 1:length(phylo$edge.length)){
+		
+		#identify branch from edge matrix
+		#lookup the name of this branch in the 'mat' matrix compiled above
+		#lookup which nat elements have the name of this branch
+		#write a vector of the nodeDiff values named with the ranges for each of these elements
+
+		
+		lf<-phylo$edge[k,1]
+		ri<-phylo$edge[k,2]
+		br<-mat[which(mat[,1]==lf & mat[,3]==ri),2]
+		natis<-which(sapply(hold.geo,function(x)br%in%x[,1]))
+		out.vec<-nodeDiff[natis]
+		name.vec<-vector()
+		for(n in 1:length(out.vec)){
+			name.vec<-c(name.vec,hold.geo[[natis[n]]][which(hold.geo[[natis[n]]][,1]==br),2])	
+		}	
+		names(out.vec)<-name.vec
+		
+		#sum adjacent elements with the same name
+		
+		out.vec.simple<-vector()
+		counter=1
+		for(i in 1: length(out.vec)){
+			if(i == 1 || i == (counter+1)){
+				while((length(out.vec)>counter) && (names(out.vec[i])==names(out.vec[counter+1]))){
+					counter=counter+1
+					}
+				hold<-sum(out.vec[i:counter])
+				names(hold)<-names(out.vec[i])
+				out.vec.simple<-c(out.vec.simple,hold)	
+				}
+		}
+		
+		
+		maps.list[[k]]<-out.vec.simple
+	
+	}
+
+	mapped.edge<-matrix(nrow=dim(phylo$edge)[1],ncol=length(unique(names(unlist(maps.list)))))
+	colnames(mapped.edge)<-unique(names(unlist(maps.list)))
+	
+	for(k in 1:dim(phylo$edge)[1]){
+		for(j in 1:dim(mapped.edge)[2]){
+			hold<-which(names(maps.list[[k]])==colnames(mapped.edge)[j])
+			mapped.edge[k,j]<-ifelse(length(hold)==0,0,sum(maps.list[[k]][hold]))
+		}
+	}
+	
+	outsmap<-list(edge=phylo$edge,edge.length=phylo$edge.length,tip.label=phylo$tip.label,Nnode=phylo$Nnode,maps=maps.list,mapped.edge=mapped.edge,Q="NA",logL="NA")
+	class(outsmap)<-c("phylo","simmap")
+
+	
+return(list(subgroup.simmap=new.map,subgroup.class.object=list(class.object=hold.class,times=nodeDist,spans=nodeDiff),geo.simmap=outsmap,geo.class.object=list(class.object=hold.geo,times=nodeDist,spans=nodeDiff)))#new phylo object, #new times, #new spans, #new geo object
 }

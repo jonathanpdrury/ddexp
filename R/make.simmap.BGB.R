@@ -15,7 +15,7 @@ get.lineage.vec<-function(tree,node){
 }
 
 
-make.simmap.BGB<-function(anc.phylo,subclade.phylo,ana.events,clado.events){
+make.simmap.BGB<-function(anc.phylo,subclade.phylo,ana.events,clado.events,return.mat=FALSE){
 	
 	if(!all(subclade.phylo$tip.label%in%anc.phylo$tip.label)){stop("ERROR: subclade tree contains tips missing from full phylogeny")}
 	phylo<-subclade.phylo
@@ -299,5 +299,9 @@ make.simmap.BGB<-function(anc.phylo,subclade.phylo,ana.events,clado.events){
 	} else {
 		class.object=CreateClassObject(out)
 	}
+	
+	if(!return.mat){
 	return(list(geo.simmap=out,class.object=class.object))
-	}
+	}else{
+	return(list(geo.simmap=out,class.object=class.object,mat=mat))
+	}}
