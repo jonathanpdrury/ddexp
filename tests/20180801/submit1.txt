@@ -1,0 +1,15 @@
+executable = /bin/bash
+request_memory = 15G
+request_cpus = 1
+nice_user = True
+
+
+arguments = "-c 'Rscript tanager_fits_fruit_TESTS.r'"
+universe = vanilla
+should_transfer_files = IF_NEEDED
+log = Rscript.log$(Cluster).$(Process)
+error = Rscript.e$(Cluster).$(Process)
+output = Rscript.o$(Cluster).$(Process)
+queue
+
+
