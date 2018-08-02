@@ -1,4 +1,9 @@
 # Fit a model for which rates depends on a time-serie curve with regime specific parameters estimates.
+# Initially, this was intended to fit model to a subgroup, taking a simmap from CreateGeobyClassObject_mvMORPH
+# along with a dataset, then internally trimming the VCV matrix
+# however, for an unknown reason, this crashes mvLL() in some part of the parameter space visited during optimization
+# Current methods for fitting subgroup are shown in 20180802_testing.R, and should be wrapped into another script
+
 
 fit_t_general_subgroup <- function(full.simmap.tree, data, fun, error=NULL, beta=NULL, sigma=NULL, model=c("exponential","linear"), method=c("L-BFGS-B","BB"), upper=Inf, lower=-20, control=list(maxit=20000), diagnostic=TRUE, echo=TRUE, constraint=TRUE) {
   
@@ -8,7 +13,8 @@ fit_t_general_subgroup <- function(full.simmap.tree, data, fun, error=NULL, beta
   if(!inherits(tree,"simmap")==TRUE) stop("For now only simmap-like mapped trees are allowed.","\n")
   
   # Parameters
-  if(is.null(names(data))) {stop("data should have names matching names in tree")} 
+  if(is.null(names(data))) {stop("data should have names matching names in tree")}
+   
   data<-as.matrix(data)
   method=method[1]
   #rownames(data)<-names(data)
@@ -51,7 +57,8 @@ fit_t_general_subgroup <- function(full.simmap.tree, data, fun, error=NULL, beta
     beta=rep(0, number_maps)
   }
   if(is.null(sigma)){
-    sigma=rep(sqrt(var(data)/max(nodeHeights(extract.clade(tree,getMRCA(tree,rownames(data)))))), number_maps)
+    #sigma=rep(sqrt(var(data)/max(nodeHeights(extract.clade(tree,getMRCA(tree,rownames(data)))))), number_maps)
+	sigma=rep(sum(pic(data,drop.tip(tree,tree$tip.label[which(!tree$tip.label%in%rownames(data))]))^2)/n, number_maps)
   }
   
   if(model=="linear"){
@@ -154,9 +161,14 @@ fit_t_general_subgroup <- function(full.simmap.tree, data, fun, error=NULL, beta
       if(!is.null(error)) errorValue <- param[nbeta+nsigma+1] else errorValue <- NULL
       phylo <- BranchtransformMAPS(phylo, beta, mtot, times, fun, sigma, model, errorValue)
       
-      phylo.trimmed<-drop.tip(phylo,phylo$tip.label[which(!phylo$tip.label%in%rownames(dat))])
-      LL<-mvLL(phylo.trimmed,dat,method="pic",param=list(estim=FALSE, sigma=1, check=FALSE))
+      V<-vcv(phylo)
+	  itoremove<-which(!colnames(V)%in%rownames(dat))
+	  if(length(itoremove)>0){V<-V[-itoremove,-itoremove]}
+      phylo.trimmed<-vcv2phylo(V)
       
+      dat=as.matrix(dat[phylo.trimmed$tip.label,])
+      LL<-mvLL(phylo.trimmed,dat,method="pic",param=list(estim=FALSE, sigma=1, check=FALSE))
+
     }else{
       param <- (param)
       beta<-param[seq_len(nbeta)]
@@ -164,6 +176,8 @@ fit_t_general_subgroup <- function(full.simmap.tree, data, fun, error=NULL, beta
       if(!is.null(error)) errorValue <- log(param[nbeta+nsigma+1]) else errorValue <- NULL
       phylo <- BranchtransformMAPS(phylo, beta, mtot, times, fun, sigma, model, errorValue)
       phylo.trimmed<-drop.tip(phylo,phylo$tip.label[which(!phylo$tip.label%in%rownames(dat))])
+      dat=as.matrix(dat[phylo.trimmed$tip.label,])
+
       LL<-mvLL(phylo.trimmed,dat,method="pic",param=list(estim=FALSE, sigma=1, check=FALSE))
       
     }
