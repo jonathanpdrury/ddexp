@@ -292,7 +292,7 @@ make.simmap.BGB<-function(anc.phylo,subclade.phylo,ana.events,clado.events,retur
 	}
 	
 	out<-list(edge=phylo$edge,edge.length=phylo$edge.length,tip.label=phylo$tip.label,Nnode=subclade.phylo$Nnode,maps=maps.list,mapped.edge=mapped.edge,Q="NA",logL="NA")
-	class(out)<-c("phylo","simmap")
+	class(out)<-c("simmap","phylo")
 	
 	if(identical(anc.phylo,subclade.phylo)){
 		class.object=list(class.object=nat,times=nodeDist,spans=nodeDiff)
