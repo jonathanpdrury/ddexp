@@ -18,14 +18,14 @@ return.class.df<-function(simmap,class.object){
 
 ##this is a generalizable function to flexibly return a list of functions (to pass to fit_t_general*) for any geo.simmap
 
-create.function.list<-function(geo.simmap, geo.class.object,class.df){
+create.function.list<-function(geo.simmap, geo.class.object,geo.class.df){
 	if(is.null(geo.simmap)){stop('provide geo.simmap')}
 	if(is.null(geo.class.object)){stop('provide geo.class.object')}
-	if(is.null(class.df)){stop('provide class.df')}
+	if(is.null(geo.class.df)){stop('provide class.df')}
 	if(is.null(geo.class.object$times)){stop('$times missing from geo.class.object')}
 	states<-colnames(geo.simmap$mapped.edge)
 	funlist<-list()
-	if(dim(class.df)[2]!=(length(states)+1)){stop('class.df is of incorrect dimensions')}
+	if(dim(geo.class.df)[2]!=(length(states)+1)){stop('geo.class.df is of incorrect dimensions')}
 	
 	for(i in 1:length(states)){
 		st<-states[i]
