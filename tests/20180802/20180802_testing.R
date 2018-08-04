@@ -200,7 +200,8 @@ for(i in 1:2){
 		###now add in fit_t_* tools and record output as well as time
 		out<-CreateGeobyClassObject_mvMORPH(phylo=tan.tree,map=guild.mapi,ana.events=tanager.data[[2]][[1]][[i]],clado.events=tanager.data[[2]][[2]][[i]],trim.class="fruit")
 		geo.class.df<-return.class.df(out$geo.simmap,out$geo.class.object)
-		geo.class.df[,which(colnames(out$geo.simmap$mapped.edge)=='Z')+1]=0
+		#geo.class.df[,which(colnames(out$geo.simmap$mapped.edge)=='Z')+1]=0
+		geo.class.df[,which(colnames(out$geo.simmap$mapped.edge)=='Z')+1]=1 #this is the change from the 0802 tests
 		##to check against BM, can use this approach: 		geo.class.df[,2:dim(geo.class.df)[2]][!is.na(geo.class.df[,2:dim(geo.class.df)[2]])]=0
 
 		geo.simmap.trimmed<-drop.tip.simmap(out$geo.simmap,out$geo.simmap$tip.label[which(!out$geo.simmap$tip.label%in%names(M))])
@@ -239,9 +240,11 @@ for(i in 1:2){
 		print(i)
 }
 resm<-data.frame(res.mat)
-write.csv(resm,file="tanager_fits_fruit_TESTS_20180802.csv")
+#write.csv(resm,file="tanager_fits_fruit_TESTS_20180802.csv")
+write.csv(resm,file="tanager_fits_fruit_TESTS_20180804.csv")
 
 
 ##that looks a *lot* better; question is still whether this is a robust solution; that is, whether root of trimmed.simmap is likely to be older than the root of the clade--maybe ignore for now
 ##biggest difference is with i=1, j=2 (0.060898463 = delta lnL). Could this be because of additional trimming owing to missing data?
 
+##TURNS OUT this is because I was turning allopatric lineages into n=0 rather than n=1; now that I've fixed this, the delta lnLs between the two approaches max out at 0.009605526
