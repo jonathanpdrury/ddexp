@@ -9,7 +9,7 @@
 #map (simmap object that is a stochastic map of discrete traits used to identify guild of competitors) 
 #trim.class (discrete category identifying species in 'data' (e.g., herbivores))
 
-CreateGeobyClassObject_mvMORPH<-function(phylo,map,trim.class,ana.events,clado.events,rnd=5){
+CreateGeobyClassObject_mvMORPH<-function(phylo,map,trim.class,ana.events,clado.events,trimmed.class.object=NULL,trimmed.geo.simmap.output=NULL,rnd=5){
 
 trc=trim.class
 
@@ -17,14 +17,23 @@ trc=trim.class
 
 new.map<-trimSimmap(map,trc)
 
-##create class.object
+##create class.object if not provided
+
+if(is.null(trimmed.class.object)){
 class.object<-CreateClassObject(new.map,rnd=rnd)
+}else{
+class.object<-trimmed.class.object
+}
 
-##update geo.object
-#geo.object<-CreateBioGeoB_Object_subclade(phylo,new.map,ana.events,clado.events)
-##need this to return geo.simmap, too
-
+if(is.null(trimmed.geo.simmap.output)){
 out<-make.simmap.BGB(phylo,new.map,ana.events,clado.events,return.mat=TRUE)
+} else{
+out<-trimmed.geo.simmap.output
+if(is.null(out$mat)){stop("'mat' slot required from geo.simmap")}
+if(is.null(out$geo.simmap)){stop("'geo.simmap' slot required from geo.simmap")}
+if(is.null(out$class.object)){stop("'class.object' slot required from geo.simmap")}
+}
+
 geo.simmap<-out$geo.simmap
 geo.class.object<-out$class.object
 
