@@ -18,7 +18,7 @@ trc=trim.class
 new.map<-trimSimmap(map,trc)
 
 ##create class.object
-class.object<-CreateClassObject(new.map)
+class.object<-CreateClassObject(new.map,rnd=rnd)
 
 ##update geo.object
 #geo.object<-CreateBioGeoB_Object_subclade(phylo,new.map,ana.events,clado.events)
