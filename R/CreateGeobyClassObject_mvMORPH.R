@@ -26,7 +26,7 @@ class.object<-trimmed.class.object
 }
 
 if(is.null(trimmed.geo.simmap.output)){
-out<-make.simmap.BGB(phylo,new.map,ana.events,clado.events,return.mat=TRUE)
+out<-make.simmap.BGB(phylo,new.map,ana.events,clado.events,return.mat=TRUE,rnd=rnd)
 } else{
 out<-trimmed.geo.simmap.output
 if(is.null(out$mat)){stop("'mat' slot required from geo.simmap")}
