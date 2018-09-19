@@ -12,7 +12,9 @@ source('fit_t_general.R')
 source('generalized_functions.R')
 source('CreateGeobyClassObject_mvMORPH.R')
 source('make.simmap.BGB.R')
+
 source('~/Dropbox/Scripts/R scripts/stratified_BGB_to_tables.R', chdir = TRUE)
+source('~/Dropbox/Scripts/R scripts/trimSimmap.R', chdir = TRUE)
 
 load('~/ddexp/data/motmot.data.Rd')
 
@@ -24,12 +26,13 @@ geo.object<-CreateBioGeoB_Object_subclade(anc.phylo=motmot.data[[1]],subclade.ph
 
 trait<-c(rep("A",5),rep("B",5))
 names(trait)<-motmot.data[[1]]$tip.label
-smap1<-make.simmap(motmot.data[[1]],trait,model="ARD")
-
-smap1$maps[[15]]<-c(1,12, 13.93837-13)
-names(smap1$maps[[15]])<-c("B","A","B")
-
-save(smap1,file="smap1.RData")
+#smap1<-make.simmap(motmot.data[[1]],trait,model="ARD")
+#
+#smap1$maps[[15]]<-c(1,12, 13.93837-13)
+#names(smap1$maps[[15]])<-c("B","A","B")
+#
+#save(smap1,file="smap1.RData")
+load('~/ddexp/tests/20180918/smap1.RData')
 
 smap<-stratified_BGB_to_tables(motmot.data[[1]],motmot.data[[2]],1)
 out<-CreateGeobyClassObject_mvMORPH(phylo=motmot.data[[1]],map=smap1,ana.events=smap$ana.int,clado.events=smap$clado.int,trim.class="A",rnd=5)
@@ -112,3 +115,95 @@ fit_t_comp_subgroup(full.phylo=motmot.data[[1]],ana.events=smap$ana.int,clado.ev
 
 
 ## not working yet
+
+
+##I wonder if this could be a result of the effect of trimming off the root--in other words the variance-covariance structure of the data changes if the branch extending from the root is still present versus trimmed
+
+##Not sure how to test this with the current approach--could perhaps try to analytically calculate vcv under different approaches and see what is returned by function?
+##With old approach, can check whether VCV matrix returned with slope = 0 is aligned with vcv for trimmed tree or for subsection of hte full tree--can also look to see whether LH returned from fitContinuous() is the same under likelihood_t_subgroup
+
+full.phylo=motmot.data[[1]]
+ana.events=smap$ana.int
+clado.events=smap$clado.int
+map=smap1
+data=M
+trim.class="A"
+model="DDexp"
+par=NULL
+method="Nelder-Mead"
+bounds=NULL
+stratified=FALSE
+
+source('~/Dropbox/Scripts/R scripts/resortGeoObject.R', chdir = TRUE)
+
+	if(is.null(names(data))){stop("data missing taxa names")}
+	if(!is.null(dim(data))){stop("data needs to be a single trait")}
+	is_tip <- full.phylo$edge[,2] <= length(full.phylo$tip.label)
+	if(sum(diff(full.phylo$edge[is_tip, 2])<0)>0){ stop('fit_t_comp_subgroup cannot be used with ladderized full.phylogenies')}
+	
+	if(is.null(bounds[["lower"]]) & is.null(bounds[["upper"]])){
+        bounds$lower = -Inf
+        bounds$upper = Inf
+    }
+    
+	GeoByClassObject<-CreateGeobyClassObject(full.phylo,map,trim.class,ana.events,clado.events,stratified=stratified)
+
+	phylo<-GeoByClassObject$map
+	if(!is.null(phylo$node.label)){phylo$node.label<-NULL}
+	geo.object<-GeoByClassObject$geo.object
+	#geo.sorted<-.resortGeoObject(phylo,geo.object) 
+
+	if(length(geo.object$geography.object)<phylo$Nnode){stop("geography object cannot have more or fewer components than internode intervals in phylo")}
+	if(length(data)>length(phylo$tip.label)){stop("error: some tips missing from pruned simmap")}
+	if(!all(names(data)%in%phylo$tip.label)){stop("error: some tips missing from pruned simmap")}
+
+geo.sorted<-resortGeoObject(phylo,geography.object) 
+
+params<-c(0,log(1),0)
+ddexp.ob<-createModel_DDexp_geo(phylo,geo.sorted)
+tipdistribution <- getTipDistribution(ddexp.ob, c(params))            
+V_RPANDA<-tipdistribution$Sigma
+V_PHYLO<-vcv.phylo(phylo)
+
+#so the VCV matrices under the *full* phylo match what occurs under RPANDAs trimming algorithm
+#which is to say, does NOT match vcv matrix under simple BM model, which would instead be
+
+V_PHYLO.trimmed<-vcv.phylo(drop.tip(phylo,"Electron_platyrhynchum"))
+
+##So the BM ML estimate should return a different likelihood under subgroup model
+
+bm.mle<-fitContinuous(drop.tip(phylo,"Electron_platyrhynchum"),M)
+
+#GEIGER-fitted comparative model of continuous data
+# fitted ‘BM’ model parameters:
+#	sigsq = 0.011486
+#	z0 = 4.504002
+#
+# model summary:
+#	log-likelihood = -2.549870
+#	AIC = 9.099740
+#	AICc = 15.099740
+#	free parameters = 2
+#
+#Convergence diagnostics:
+#	optimization iterations = 100
+#	failed iterations = 0
+#	frequency of best fit = 1.00
+#
+# object summary:
+#	'lik' -- likelihood function
+#	'bnd' -- bounds for likelihood search
+#	'res' -- optimization iteration summary
+#	'opt' -- maximum likelihood parameter estimates
+
+par<-c(log(sqrt(0.011486)),0)
+likelihood_subgroup_model(data=M,phylo=phylo,geography.object=geo.object,model="DDexp",par=par)
+
+#         [,1]
+#[1,] 3.023324
+#attr(,"logarithm")
+#[1] TRUE
+
+
+#whereas the approach above (the mvMORPH approach) should return the right likelihood
+##(try this)
