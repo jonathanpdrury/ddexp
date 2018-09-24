@@ -207,3 +207,29 @@ likelihood_subgroup_model(data=M,phylo=phylo,geography.object=geo.object,model="
 
 #whereas the approach above (the mvMORPH approach) should return the right likelihood
 ##(try this)
+
+# Use the function in fit_t_general to recover the transformed tree (i.e. we don't optimize just fix the parameters)
+
+test<-fit_t_general(geo.simmap.trimmed, M, fun=new_list_function,diagnostic=T,echo=T,method="fixed")
+tempTree <- test$phyloTrans # retrieve the transformed tree
+class(tempTree) <- "phylo"  # I change it to a phylo object because the simmap structure is affected...
+plot(tempTree) # Let's plot it
+
+#
+#Summary results for the exponential  model 
+#LogLikelihood: 	 -2.54987 
+#AIC: 	 11.09974 
+#AICc: 	 35.09974 
+#3 parameters
+#Estimated rates matrix 
+#            [,1]
+#beta  0.00000000
+#sigma 0.01148575
+
+
+#> likelihood_t_DD(drop.tip(phylo,"Electron_platyrhynchum"),M,par=c(log(0.01148575),0),model="DDexp")
+#[1] 2.54987
+
+
+##SO, the mvMORPH approach is returning the expected likelihood when sig2 == 0; I think that it is likely returning reliable estimates in this scenario. Are there other tests to run? Calculate expected VCV matrix by hand for this simple scenario.
+
