@@ -16,6 +16,17 @@ return.class.df<-function(simmap,class.object){
 	eval(parse(text=paste('return(data.frame(interval=1:length(d1),',paste('d',1:length(states),sep="",collapse=','),'))',sep="")))
 }
 
+return.class.df_subgroup<-function(simmap,class.object){
+	states<-colnames(simmap$mapped.edge)
+	for(i in 1:length(states)){
+		st.id=i #this gives the columns to extract from class.df
+		#eval(parse(text=paste('d',i,'<-sapply(class.object$class.object,function(x)sum(x[,2]==states[',i,']))',sep="")))
+		eval(parse(text=paste('d',i,'<-sapply(class.object$class.object,function(x)sum(x[,2]%in%states[',st.id,']))',sep="")))
+	}
+	eval(parse(text=paste('return(data.frame(interval=1:length(d1),',paste('d',1:length(states),sep="",collapse=','),'))',sep="")))
+}
+
+
 ##this is a generalizable function to flexibly return a list of functions (to pass to fit_t_general*) for any geo.simmap
 
 create.function.list<-function(geo.simmap, geo.class.object,geo.class.df){
