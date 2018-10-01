@@ -17,7 +17,7 @@ source('CreateGeobyClassObject_mvMORPH.R')
 source('make.simmap.BGB.R')
 source('trimSimmap.R')
 source('CreateClassObject.R')
-
+source('CreateClassbyClassObject_mvMORPH.R')
 
 master<-read.csv("BIRDS_MASTER.csv")
 tree<-read.tree("treefile_allbirds_simple.tree")
@@ -30,18 +30,17 @@ load('all.simmap.trop.RData')
 diet.simmap.allbirds.i<-diet.simmap.allbirds[[1]]
 diet.simmap.allbirds.i<-drop.tip.simmap(diet.simmap.allbirds.i,diet.simmap.allbirds.i$tip.label[which(!diet.simmap.allbirds.i$tip.label%in%tree$tip.label)])
 
-trop.simmap.allbirds.i<-all.simmap.trop[[1]]
+trop.simmap.allbirds.i<-all.simmap.trop[[2]]
 trop.simmap.allbirds.i<-drop.tip.simmap(trop.simmap.allbirds.i,trop.simmap.allbirds.i$tip.label[which(!trop.simmap.allbirds.i$tip.label%in%tree$tip.label)])
 
 region.vec<-c("AB","CD","E","F","G","H","I","J","K","L")
 
-res.mat<-matrix(nrow=7,ncol=21)
-colnames(res.mat)<-c("region","trait","diet.category","no","BM1.lnL","BM1.AIC","BM1.sig","BM1.z0","BM1.convergence","OU1.lnL","OU1.AIC","OU1.sig","OU1.alpha","OU1.z0","OU1.convergence","geo.map","DDexp.lnL","DDexp.sig","DDexp.r","DDexp.z0","DDexp.convergence")
-outlist=list()
+res.mat<-matrix(nrow=7*length(region.vec),ncol=57)
+colnames(res.mat)<-c("region","trait","diet.category","no","no.lineages.in.each.regime","BM1.lnL","BM1.AICc","BM1.sig","BM1.z0","BM1.convergence","BM1.hess.value","OU1.lnL","OU1.AICc","OU1.sig","OU1.alpha","OU1.z0","OU1.convergence","OU1.hess.value","DDexp.lnL","DDexp.sig","DDexp.r","DDexp.z0","DDexp.convergence","DDexp.hess.value","BMM.lnL","BMM.AICc","BMM.cat_1","BMM.cat_2","BMM.sig_1","BMM.sig_2","BMM.z0","BMM.convergence","BMM.hess.value","OUM.lnL","OUM.AICc","OUM.sig","OUM.alpha","OUM.cat_1","OUM.cat_2","OUM.z0_1","OUM.z0_2","OUM.convergence","OUM.hess.value","DDM.lnL","DDM.AICc","DDM.cat_1","DDM.cat_2","DDM.cat_3","DDM.sig_1","DDM.sig_2","DDM.sig_3","DDM.rate_1","DDM.rate_2","DDM.rate_3","DDM.z0","DDM.convergence","DDM.hess.value")
 
 fruit<-subset(master,diet=="fruit")
 
-
+counter=1
 for(i in 1:length(region.vec)){
 
 	#trim tree down to region of interest
@@ -77,7 +76,7 @@ for(i in 1:length(region.vec)){
 		
 		##fit BM and OU first
 		o1<-mvBM(subtree,M,model=c("BM1"),optimization="subplex")
-		o2<-mvOU(subtree,M,model=c("OU1"),method="sparse", optimization="subplex")
+		o2<-mvOU(subtree,M,model=c("OU1"),optimization="subplex")
 		
 		##prepare simmap and fit DDexp to subgroup
 		
@@ -117,11 +116,6 @@ for(i in 1:length(region.vec)){
 		
 		new_list_function<-create.function.list(fruit.simmap.region.trimmed,out,fruit.class.df.trimmed)
 		o3<-fit_t_general(fruit.simmap.region.trimmed, M, fun=new_list_function,diagnostic=T,echo=T)			 
-		DDexpgeo_mvMORPH.lnL<-o3$LogLik
-		DDexpgeo_mvMORPH.sig2<-o3$rates[2,1]
-		DDexpgeo_mvMORPH.r<-o3$rates[1,1]
-		DDexpgeo_mvMORPH.z0<-o3$anc
-		DDexpgeo_mvMORPH.conv<-o3$convergence
 		
 		### NOW fitting models that vary according to tropical/temperate membership
 		
@@ -149,7 +143,7 @@ for(i in 1:length(region.vec)){
 		###	adjust the class.df and class.object if the trimmed tree has a younger root than the ancestral tree
 		if(round(regime.simmap.region.root,5)!=round(regime.simmap.region.trimmed.root,5)){
 
-			trimmed.class.object<-CreateClassObject(regime.simmap.region.trimmed)
+			trimmed.class.object<-CreateClassObject(regime.simmap.region.trimmed,rnd=6)
 			shifted.times<-trimmed.class.object$times+(regime.simmap.region.root-regime.simmap.region.trimmed.root)
 			new.regime.class.df.trimmed<-regime.class.df.trimmed[c(which(round(out$regime.class.object$times,5)==round(min(shifted.times),5)):dim(regime.class.df.trimmed)[1]),]
 			
@@ -160,19 +154,14 @@ for(i in 1:length(region.vec)){
 		
 		new_list_function<-create.function.list(regime.simmap.region.trimmed,out$regime.class.object,regime.class.df.trimmed)
 		o3B<-fit_t_general(regime.simmap.region.trimmed, M, fun=new_list_function,diagnostic=T,echo=T,constraint=FALSE)			 
-		DDexpgeo_mvMORPH.lnL<-o3B$LogLik
-		DDexpgeo_mvMORPH.sig2<-o3B$rates[2,1]
-		DDexpgeo_mvMORPH.r<-o3B$rates[1,1]
-		DDexpgeo_mvMORPH.z0<-o3B$anc
-		DDexpgeo_mvMORPH.conv<-o3B$convergence
 
-##STOPPED here		
-		
-		int<-c(colnames(master)[90+j],"fruit",length(M),o1$LogLik,o1$AIC,o1$sigma,o1$theta,o1$convergence,o2$LogLik,o2$AIC,o2$sigma,o2$alpha,o2$theta,o2$convergence,iter,o3$LogLik,o3$rates[2,1],o3$rates[1,1],o3$anc,o3$convergence)
+		int<-c(region.vec[i],colnames(master)[90+j],"fruit",length(M),paste(colnames(regime.simmap.region.trimmed$mapped.edge),regime.class.df.trimmed[dim(regime.class.df.trimmed)[1],2:4],collapse=";"),o1$LogLik,o1$AICc,o1$sigma,o1$theta,o1$convergence,o1$hess.value,o2$LogLik,o2$AICc,o2$sigma,o2$alpha,o2$theta,o2$convergence,o2$hess.value,o3$LogLik,o3$rates[2,1],o3$rates[1,1],o3$anc,o3$convergence,o3$hess.value,o1B$LogLik,o1B$AICc,dimnames(o1B$sigma)[[3]][1],dimnames(o1B$sigma)[[3]][2],o1B$sigma[1],o1B$sigma[2],o1B$theta,o1B$convergence,o1B$hess.value,o2B$LogLik,o2B$AICc,o2B$sigma,o2B$alpha,rownames(o2B$theta)[1],rownames(o2B$theta)[2],o2B$theta[1],o2B$theta[2],o2B$convergence,o2B$hess.value,o3B$LogLik,o3B$AICc,colnames(o3B$rates)[1],colnames(o3B$rates)[2],colnames(o3B$rates)[3],o3B$rates[2,1],o3B$rates[2,2],o3B$rates[2,3],o3B$rates[1,1],o3B$rates[1,2],o3B$rates[1,3],o3B$anc,o3B$convergence,o3B$hess.value)
 		print(int)
-		res.mat[j,]<-int
+		res.mat[counter,]<-int
+		counter=counter+1
 		write.csv(res.mat,file="modelfits_frugivores_firstmap.csv")
-		print(j)
-	}	
+		print(paste0(i,":",j))
+	}
+}		
 
 write.csv(res.mat,file="modelfits_frugivores_firstmap.csv")

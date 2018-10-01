@@ -135,5 +135,11 @@ fit_t_general(regime.simmap.region.trimmed, beta=c(1.188298,0,-0.03965939),sigma
 
 ###getting *very* different likelihoods--need to figure out where the issue is
 ###also need to think about how to deal with "Z" parameter estimation
-##>>>could edit fit_t_general to force beta for Z to be 0
+##>>>could edit fit_t_general to force beta for Z to be 0; this is accomplished by setting regime.class.df column to 0
 ##>>>maybe also to force sig2 to be equal across regimes?
+
+##ultimately, this approach is different from RPANDA approach; would need to conduct a wholescale rewrite to conduct proper comparison tests;
+##currently, two regime approach works fine, as does subgroup pruning, so I think it is safe to go forward with this approach; 
+##perhaps running a small simulation study to test the ability for hte method to detect things?
+
+
