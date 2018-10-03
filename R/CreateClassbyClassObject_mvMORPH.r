@@ -71,11 +71,6 @@ for(i in 1:length(nodeDiff)){
 	}
 	}
 
-### ONLY GOT THIS FAR SO FAR
-##update geo.simmap to add 'Z' to allopatric times
-
-
-
 
 	phylo<-class.object.regime$phylo
 	mat<-class.object.regime$mat
