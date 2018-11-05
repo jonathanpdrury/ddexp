@@ -18,7 +18,7 @@ fit_t_general <- function(tree, data, fun, error=NULL, beta=NULL, sigma=NULL, mo
   times<-max(times)-times
   # Max time
   mtot=max(nodeHeights(tree))
-  
+  onestate<-ifelse(dim(tree$mapped.edge)[2]==1,TRUE,FALSE)
   
   # Number of species
   n=length(tree$tip.label)
@@ -106,7 +106,11 @@ fit_t_general <- function(tree, data, fun, error=NULL, beta=NULL, sigma=NULL, mo
       
       # loop pour traverser les "maps"
       for(betaval in 1:indlength){
+        if(onestate){
+        regimenumber=1
+        }else{
         regimenumber <- which(colnames(phy$mapped.edge)==names(currentmap)[betaval])  # retrieve the regimes within maps
+        }
         if(constraint){
             bet <- beta
             sig <- sigma
