@@ -3,6 +3,7 @@ require(ggplot2)
 
 simdat<-read.csv("~/ddexp/tests/20181114/ddm_simulation_study_20181114.csv")
 
+par(mfrow=c(2,1))
 plot(simdat$sim.sig2_1,simdat$est.sig2_1)
 abline(a=0,b=1,col="red")
 plot(simdat$sim.sig2_2,simdat$est.sig2_2)
@@ -19,7 +20,7 @@ boxplot(est.r1~factor(sim.r1),data=simdat)
 abline(h=c(-0.1,-0.05,-0.025,0,0.05),lty=2,col="red")
 boxplot(est.r2~factor(sim.r2),data=simdat)
 abline(h=c(-0.1,-0.05,-0.025,0,0.05),lty=2,col="red")
-boxplot(est.r1-est.r2~factor(sim.r1-sim.r2),data=simdat)
+boxplot(est.r1-est.r2~factor(sim.r1-sim.r2),data=simdat,xlab="slope_1 - slope_2 (simulated)", ylab="slope_1 - slope_2 (estimated)")
 abline(h=c(-0.1,-0.05,-0.025,0,0.025,0.05,0.1),lty=2,col="red")
 
 simdat<-subset(simdat,remove==0)
