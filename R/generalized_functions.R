@@ -16,6 +16,13 @@ return.class.df<-function(simmap,class.object){
 	eval(parse(text=paste('return(data.frame(interval=1:length(d1),',paste('d',1:length(states),sep="",collapse=','),'))',sep="")))
 }
 
+return.class.df_sympatric<-function(simmap){
+	states<-colnames(simmap$mapped.edge)
+	d1<-2:length(simmap$tip.label)
+	eval(parse(text=paste('return(data.frame(interval=1:length(d1),',paste('d',1:length(states),sep="",collapse=','),'))',sep="")))
+}
+
+
 return.class.df_subgroup<-function(simmap,class.object){
 	states<-colnames(simmap$mapped.edge)
 	for(i in 1:length(states)){
@@ -49,6 +56,25 @@ create.function.list<-function(geo.simmap, geo.class.object,geo.class.df){
 	return(funlist)
 
 }
+
+create.function.list_sympatric<-function(simmap,class.df){
+	if(is.null(class.df)){stop('provide class.df')}
+	states<-colnames(simmap$mapped.edge)
+	funlist<-list()
+	if(dim(class.df)[2]!=(length(states)+1)){stop('class.df is of incorrect dimensions')}
+	
+	for(i in 1:length(states)){
+		st<-states[i]
+		#cols=paste("c(",paste(which(grepl(paste(strsplit(st,split="")[[1]],collapse="|"),states))+1,collapse=","),")",sep="") #this gives the columns to extract from class.df
+		#eval(parse(text=paste("funlist[[",i,"]]<-function(x){;values <- simmap$times;res <- findInterval(x, values);index <- res==0;res[index==TRUE] <- 1;return(as.matrix(geo.class.df[res,",cols,"]));}",sep="")))
+		#eval(parse(text=paste("funlist[[",i,"]]<-function(x){;values <- ",deparse(substitute(geo.class.object)),"$times;res <- findInterval(x, values);index <- res==0;res[index==TRUE] <- 1;return(as.matrix(",deparse(substitute(geo.class.df)),"[res,",cols,"]));}",sep="")))
+		eval(parse(text=paste("funlist[[",i,"]]<-function(x){;values <- ",deparse(substitute(simmap)),"$times;res <- findInterval(x, values);index <- res==0;res[index==TRUE] <- 1;return(",deparse(substitute(class.df)),"[res,",i+1,"]);}",sep="")))
+		}
+			
+	return(funlist)
+
+}
+
 
 ###below are other functions from BioGeoBEARS
 
