@@ -102,6 +102,12 @@ fit_t_general <- function(tree, data, fun, error=NULL, beta=NULL, sigma=NULL, mo
     ## Index error
     index_error<-sapply(1:n, function(x){ which(phy$edge[,2]==x)})
     startval=c(startval,0.001)
+    # to construct a mixed model (refer to l.172 of the code below)
+    if(is.numeric(error)){
+      error_meas = error^2
+    }else{
+      error_meas = numeric(n)       
+    }
   }
   
   ##--------------Fonction-generale-DD-Env-------------------------------------------##
@@ -163,7 +169,7 @@ fit_t_general <- function(tree, data, fun, error=NULL, beta=NULL, sigma=NULL, mo
     phy<-res
     
     if(!is.null(errorValue)){
-      phy$edge.length[index_error]<-phy$edge.length[index_error]+errorValue^2
+      phy$edge.length[index_error]<-phy$edge.length[index_error] + error_meas + errorValue^2
     }
     
     return(phy)
