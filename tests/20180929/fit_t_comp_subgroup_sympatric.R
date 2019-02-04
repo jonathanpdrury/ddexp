@@ -1,5 +1,5 @@
-fit_t_comp_subgroup<-function(map,data,trim.class,model=c("DDexp"),par=NULL,method="Nelder-Mead",bounds=NULL,regime.map=NULL){
-
+fit_t_comp_subgroup<-function(map,data,trim.class,model=c("DDexp","DDlin"),par=NULL,method="Nelder-Mead",bounds=NULL,regime.map=NULL){
+	if(!model%in%c("DDexp","DDlin") | length(model)>1){stop("model must be specified as 'DDexp' or 'DDlin'")}
 	if(is.null(names(data))){stop("data missing taxa names")}
 	if(!is.null(dim(data))){stop("data needs to be a single trait")}
 	if(is.null(bounds[["lower"]]) & is.null(bounds[["upper"]])){
@@ -36,21 +36,22 @@ fit_t_comp_subgroup<-function(map,data,trim.class,model=c("DDexp"),par=NULL,meth
 	if(is.null(par)){par<-c(log(sqrt(var(data)/max(nodeHeights(extract.clade(phylo,getMRCA(phylo,names(data))))))),0)}
 	
 	if(is.null(regime.map)){
-		opt<-optim(par,likelihood_subgroup_model,phylo=phylo,geography.object=geo.object,data=data,model="DDexp",method=method, lower=bounds$lower, upper=bounds$upper)
+		opt<-optim(par,likelihood_subgroup_model,phylo=phylo,geography.object=geo.sorted,data=data,model=model,method=method, lower=bounds$lower, upper=bounds$upper)
+		
 		sig2 = exp(opt$par[1])^2
 		r = opt$par[2]
-		z0=likelihood_subgroup_model(data=data,phylo=phylo,geography.object=geo.object,model="DDexp",par=opt$par,return.z0=TRUE)
+		z0=likelihood_subgroup_model(data=data,phylo=phylo,geography.object=geo.object,model=model,par=opt$par,return.z0=TRUE)
 		results<-list(model = model, LH = -opt$value, aic = (2*3 - 2*(-opt$value)), aicc = (2*3 - 2*(-opt$value))+((2*3*(3+1))/(length(phylo$tip.label)-3-1)), free.parameters = 3, sig2 = sig2, r = r, z0 = as.numeric(z0), convergence = opt$convergence)
 		return(results)
 		} else {		
 		##update 'par' to have enough elements for the regimes
 		par=c(par[1],par[1],par[2],par[2])
-		opt<-optim(par,likelihood_subgroup_model,phylo=phylo,geography.object=sgeo,data=data,r.object=smat,model="DDexp",method=method, lower=bounds$lower, upper=bounds$upper)
+		opt<-optim(par,likelihood_subgroup_model,phylo=phylo,geography.object=sgeo,data=data,r.object=smat,model=model,method=method, lower=bounds$lower, upper=bounds$upper)
 		sig2_1 = exp(opt$par[1])^2
 		sig2_2 = exp(opt$par[2])^2
 		r1 = opt$par[3]
 		r2 = opt$par[4]
-		z0=likelihood_subgroup_model(data=data,phylo=phylo,geography.object=geo.object,model="DDexp",par=opt$par,return.z0=TRUE)
+		z0=likelihood_subgroup_model(data=data,phylo=phylo,geography.object=sgeo,r.object=smat,model=model,par=opt$par,return.z0=TRUE)
 		results<-list(model = model, LH = -opt$value, aic = (2*3 - 2*(-opt$value)), aicc = (2*3 - 2*(-opt$value))+((2*3*(3+1))/(length(phylo$tip.label)-3-1)), free.parameters = 3, sig2_1 = sig2_1, sig2_2 = sig2_2, r1 = r1, r2 = r2, z0 = as.numeric(z0), convergence = opt$convergence)
 		return(results)	
 		}

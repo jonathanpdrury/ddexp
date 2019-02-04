@@ -2,15 +2,22 @@
 #i.e., two rate models vs. single rate models
 #models with biogeography vs. models without biogeography
 #models with subgroup pruning vs. models without subgroup pruning
+require(phytools)
 
+#source('fit_t_general_options_old.R')
+#source('generalized_functions.R')
+#source('CreateClassObject.R')
+#source('trimSimmap.R')
+#source('CreateClassbyClassObject_mvMORPH.R')
 
-source('fit_t_general.R')
-source('generalized_functions.R')
-source('CreateClassObject.R')
-source('trimSimmap.R')
-source('CreateClassbyClassObject_mvMORPH.R')
+source('~/ddexp/R/fit_t_general_options_old.R')
+source('~/ddexp/R/generalized_functions.R')
+source('~/Dropbox/Scripts/R scripts/CreateClassObject.R', chdir = TRUE)
+source('~/Dropbox/Scripts/R scripts/trimSimmap.R', chdir = TRUE)
+source('~/ddexp/R/CreateClassbyClassObject_mvMORPH.R')
 
 ### think about adding in functionality for speeding up computation (e.g., so that "CreateClassObject[...]" scripts don't have to be run over and over unecessarily)
+### check whether the biogeo stuff only works for stratified or unstratfied biogeographies
 
 fit_t_DD<-function(phylo,data,model=c("exponential","linear"),geo.map=NULL,subgroup=NULL,subgroup.map=NULL,regime.map=NULL,error=NULL, beta=NULL, sigma=NULL, method=c("L-BFGS-B","BB"), upper=Inf, lower=-20, control=list(maxit=20000), diagnostic=FALSE, echo=FALSE){
 	
@@ -20,52 +27,56 @@ if(is.null(geo.map)&&is.null(subgroup.map)&&is.null(regime.map)){ 	# single slop
 	
 		#check data format, names, and sorting
 		
-		#convert phylo to simmap object
-		hold<-rep("A",length(phylo$tip.label))
-		hold[1]<-"B"
-		names(hold)<-phylo$tip.label
-		smap<-make.simmap(phylo,hold)
-		new.maps<-list()
-		for(i in 1:length(phylo$edge.length)){
-			new.maps[[i]]<-phylo$edge.length[i]
-			names(new.maps[[i]])<-"A"
-			}
-		new.mapped.edge<- as.matrix(rowSums(smap$mapped.edge))
-		colnames(new.mapped.edge)<-"A"	
-		smap$maps<-new.maps
-		smap$mapped.edge<-new.mapped.edge
-	
-		nodeDist<-vector(mode = "numeric", length = smap$Nnode)
-  		totlen<-length(smap$tip.label)
-  		root <-totlen  + 1
-  		heights<-nodeHeights(smap)
-  		for (i in 1:dim(smap$edge)[1]){
-    		nodeDist[[smap$edge[i, 1] - totlen]] <- heights[i]
-		  }
-		nodeDist<-c(nodeDist,max(heights))
-		smap$times<-nodeDist
-		
-		#create function
-		class.df<-return.class.df_sympatric(smap)
-		new_list_function<-create.function.list_sympatric(smap,class.df)
-		
-		#calculate maxN if DDlin, set to NA if DDexp
-		
-		maxN<-ifelse(model=="linear",max(class.df[,2]),NA)
-		
-		#fit model
-		sigma.constraint<-rep(1, dim(smap)[2])
-		beta.constraint<-rep(1, dim(smap)[2])
+#		#convert phylo to simmap object
+#		hold<-rep("A",length(phylo$tip.label))
+#		hold[1]<-"B"
+#		names(hold)<-phylo$tip.label
+#		smap<-make.simmap(phylo,hold,message=F)
+#		new.maps<-list()
+#		for(i in 1:length(phylo$edge.length)){
+#			new.maps[[i]]<-phylo$edge.length[i]
+#			names(new.maps[[i]])<-"A"
+#			}
+#		new.mapped.edge<- as.matrix(rowSums(smap$mapped.edge))
+#		colnames(new.mapped.edge)<-"A"	
+#		smap$maps<-new.maps
+#		smap$mapped.edge<-new.mapped.edge
+#	
+#		nodeDist<-vector(mode = "numeric", length = smap$Nnode)
+#  		totlen<-length(smap$tip.label)
+#  		root <-totlen  + 1
+#  		heights<-nodeHeights(smap)
+#  		for (i in 1:dim(smap$edge)[1]){
+#    		nodeDist[[smap$edge[i, 1] - totlen]] <- heights[i]
+#		  }
+#		nodeDist<-c(nodeDist,max(heights))
+#		smap$times<-nodeDist
+#		
+#		#create function
+#		class.df<-return.class.df_sympatric(smap)
+#		new_list_function<-create.function.list_sympatric(smap,class.df)
+#		
+#		#calculate maxN if DDlin, set to NA if DDexp
+#		maxN<-ifelse(model=="linear",max(class.df[,2]),NA)
+#		
+#		#fit model
+#		sigma.constraint<-rep(1, dim(smap$mapped.edge)[2])
+#		beta.constraint<-rep(1, dim(smap$mapped.edge)[2])
+#
+#		out<-fit_t_general(tree=smap,data=data,fun=new_list_function,error=error, sigma=sigma, beta=beta, model=model,method=method,maxN=maxN, upper=upper, lower=lower, control=control,diagnostic=diagnostic, echo=echo,constraint=list(sigma=sigma.constraint, beta=beta.constraint))
 
-		out<-fit_t_general(tree=smap,data=data,fun=new_list_function,error=error, sigma=sigma, beta=beta, model=model,method=method,maxN=maxN, upper=upper, lower=lower, control=control,diagnostic=diagnostic, echo=echo,constraint=list(sigma=sigma.constraint, beta=beta.constraint))
+# THIS isn't optimising correctly for some reason; could try to reactivate if optimisation issues are workedout otherwise:
+
+		#need to add other cases down the line
+		stop("not currently implemented; please use RPANDA::fit_t_comp")
 
 }  else if (is.null(geo.map)&&is.null(subgroup.map)&&!is.null(regime.map)) { # two slope version without BioGeoBEARS biogeography or subgroup pruning
 
 		#first check that regime.map and phylo and data are concordant
-		if(as.phylo(phylo)$tip.label != as.phylo(regime.map)$tip.label) { stop("regime map doesn't match phylogeny")}
+		if(!all(as.phylo(phylo)$tip.label == as.phylo(regime.map)$tip.label)) { stop("regime map doesn't match phylogeny")}
 		if(length(data) != length(as.phylo(regime.map)$tip.label)) { stop("number of lineages in data and regime map don't match")}
-		if(! names(data) %in% as.phylo(regime.map)$tip.label) { stop("names of lineages in data and regime map don't match")}
-		if(! as.phylo(regime.map)$tip.label %in% names(data) ) { stop("names of lineages in data and regime map don't match")}
+		if(! all (names(data) %in% as.phylo(regime.map)$tip.label)) { stop("names of lineages in data and regime map don't match")}
+		if(! all (as.phylo(regime.map)$tip.label %in% names(data)) ) { stop("names of lineages in data and regime map don't match")}
 		
 		class.object<-try(CreateClassObject(regime.map))
 		if(class(class.object)=="try-error"){class.object<-try(CreateClassObject(regime.map,rnd=6))}
@@ -82,14 +93,14 @@ if(is.null(geo.map)&&is.null(subgroup.map)&&is.null(regime.map)){ 	# single slop
 		sigma.constraint<-rep(1, dim(regime.map$mapped.edge)[2])
 		beta.constraint<-seq(1,by=1,length.out=dim(regime.map$mapped.edge)[2])
 		
-		out<-fit_t_general(tree=regime.map,data=data,fun=new_list_function,error=error, sigma=sigma, beta=beta, model=model,method=method,maxN=maxN, upper=upper, lower=lower, control=control,diagnostic=diagnostic, echo=echo,constraint=list(sigma=sigma.constraint, beta=sigma.constraint))
+		out<-fit_t_general(tree=regime.map,data=data,fun=new_list_function,error=error, sigma=sigma, beta=beta, model=model,method=method,maxN=maxN, upper=upper, lower=lower, control=control,diagnostic=diagnostic, echo=echo,constraint=list(sigma=sigma.constraint, beta=beta.constraint))
 		
 }  else if (is.null(subgroup.map)&&is.null(regime.map)&&!is.null(geo.map)) { # single slope version with BioGeoBEARS biogeography but no subgroup pruning
 
 		geo.simmap<-geo.map
 		hold<-CreateClassObject(geo.simmap)
 		geo.class.df<-return.class.df(geo.simmap,hold)
-		new_list_function <- create.function.list(geo.simmap=geo.simmap,geo.class.object=hold, class.df=geo.class.df)
+		new_list_function <- create.function.list(geo.simmap=geo.simmap,geo.class.object=hold, geo.class.df=geo.class.df)
 
 		maxN<-ifelse(model=="linear",max(class.df[,-1]),NA)
 
@@ -108,7 +119,7 @@ if(is.null(geo.map)&&is.null(subgroup.map)&&is.null(regime.map)){ 	# single slop
 		
 	 	#first check  subgroup map, and phylo and data are concordant
 		
-		if(!phylo$tip.label %in% as.phylo(subgroup.map)$tip.label) { stop("some lineages in phylogeny don't appear in subgroup map")}
+		if(!all(phylo$tip.label %in% as.phylo(subgroup.map)$tip.label)) { stop("some lineages in phylogeny don't appear in subgroup map")}
 		if( is.null(subgroup) || (!subgroup%in%colnames(subgroup.map$mapped.edge))){ stop("specify a subgroup that appears as a mapped regime in subgroup.map")}
 
 ###is this really what we want for subgroup? might inadvertently get rid of trimclass species? DOUBEL CHECK		
@@ -166,10 +177,10 @@ if(is.null(geo.map)&&is.null(subgroup.map)&&is.null(regime.map)){ 	# single slop
 		beta.constraint[which(colnames(trimclass.subgroup.trimmed.tips$mapped.edge)==subgroup)]<-1
 		
 		out<-fit_t_general(tree=trimclass.subgroup.trimmed.tips, data=data, fun=new_list_function,error=error, sigma=sigma, beta=beta, model=model,method=method,maxN=maxN, upper=upper, lower=lower, control=control,diagnostic=diagnostic, echo=echo,constraint=list(sigma=sigma.constraint, beta=beta.constraint))
-	
+
 }  else if (is.null(geo.map)&&!is.null(regime.map)&&!is.null(subgroup.map)) {  # two slope version with subgroup pruning but no BioGeoBEARS biogeography
 
-		if(!phylo$tip.label %in% as.phylo(subgroup.map)$tip.label) { stop("some lineages in phylogeny don't appear in subgroup map")}
+		if(!all(phylo$tip.label %in% as.phylo(subgroup.map)$tip.label)) { stop("some lineages in phylogeny don't appear in subgroup map")}
 		if( is.null(subgroup) || (!subgroup%in%colnames(subgroup.map$mapped.edge))){ stop("specify a subgroup that appears as a mapped regime in subgroup.map")}
 
 ###This is the version from fits for latitude project	

@@ -1,24 +1,42 @@
-likelihood_subgroup_model<-function(data,phylo,geography.object,model=c("DDexp"),par,return.z0=FALSE,r.object=NULL){
+likelihood_subgroup_model<-function(data,phylo,geography.object,model=c("DDexp","DDlin"),par,return.z0=FALSE,r.object=NULL){
  	if(any(grepl("___",phylo$tip.label))){stop("script will not work with '___' in tip labels; remove extra underscores")}
 	if(is.null(names(data))){stop("data is unnamed; names should match tip labels in phylogeny")}
-	if(!model%in%c("DDexp") | length(model)>1){stop("model must be specified as 'DDexp'")}
-  	if(is.null(regime.map) && (length(par)!=2)){stop("par must contain two values, one for sig2 and another for slope")}
+	if(!model%in%c("DDexp","DDlin") | length(model)>1){stop("model must be specified as 'DDexp' or 'DDlin'")}
+  	if(is.null(r.object) && (length(par)!=2)){stop("par must contain two values, one for sig2 and another for slope")}
 	
 	##create VCV
-
-	if(is.null(r.object)){
-		params<-c(0,par)
-		ddexp.ob<-createModel_DDexp_geo(phylo,geo.sorted)
-        tipdistribution <- getTipDistribution(ddexp.ob, c(params))            
-		V<-tipdistribution$Sigma
-	} else{
-		
-		params<-c(0,par)
-		ddm.ob<-createModel_DDexp_multi_geo(phylo,geo.object=geography.object,r.object=r.object)
-        tipdistribution <- getTipDistribution(ddm.ob, c(params))            
-		V<-tipdistribution$Sigma
+	
+	if(model=="DDexp"){
+		if(is.null(r.object)){
+			params<-c(0,par)
+			ddexp.ob<-createModel_DDexp_geo(phylo,geo.object=geography.object)
+	        tipdistribution <- getTipDistribution(ddexp.ob, c(params))            
+			V<-tipdistribution$Sigma
+		} else{
+			
+			params<-c(0,par)
+			ddm.ob<-createModel_DDexp_multi_geo(phylo,geo.object=geography.object,r.object=r.object)
+	        tipdistribution <- getTipDistribution(ddm.ob, c(params))            
+			V<-tipdistribution$Sigma
+		}
 	}
 	
+	if(model=="DDlin"){
+		if(is.null(r.object)){
+			params<-c(0,par)
+			ddexp.ob<-createModel_DDlin_geo(phylo,geo.object=geography.object)
+	        tipdistribution <- getTipDistribution(ddexp.ob, c(params))            
+			V<-tipdistribution$Sigma
+		} else{
+			
+			params<-c(0,par)
+			ddlm.ob<-createModel_DDlin_multi_geo(phylo,geo.object=geography.object,r.object=r.object)
+	        tipdistribution <- getTipDistribution(ddlm.ob, c(params))            
+			V<-tipdistribution$Sigma
+		}
+	}
+	
+		
 	##remove rows not in data (i.e., lineages outside of group at present)
 	
 	itoremove<-which(!colnames(V)%in%names(data))
