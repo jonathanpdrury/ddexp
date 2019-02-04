@@ -45,10 +45,10 @@ fit_t_comp_subgroup<-function(map,data,trim.class,model=c("DDexp","DDlin"),par=N
 		return(results)
 		} else {		
 		##update 'par' to have enough elements for the regimes
-		par=c(par[1],par[1],par[2],par[2])
+		par=c(par[1],par[2],par[2])
 		opt<-optim(par,likelihood_subgroup_model,phylo=phylo,geography.object=sgeo,data=data,r.object=smat,model=model,method=method, lower=bounds$lower, upper=bounds$upper)
-		sig2_1 = exp(opt$par[1])^2
-		sig2_2 = exp(opt$par[2])^2
+		sig2 = exp(opt$par[1])^2
+		#sig2_2 = exp(opt$par[2])^2
 		r1 = opt$par[3]
 		r2 = opt$par[4]
 		z0=likelihood_subgroup_model(data=data,phylo=phylo,geography.object=sgeo,r.object=smat,model=model,par=opt$par,return.z0=TRUE)
