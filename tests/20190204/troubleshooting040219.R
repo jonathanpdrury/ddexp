@@ -211,7 +211,7 @@ source('~/Dropbox/Scripts/R scripts/ReconcileGeoObjectSMatrix.R', chdir = TRUE)
 source('~/Dropbox/Scripts/R scripts/resortSMatrix.R', chdir = TRUE)
 source('~/Dropbox/Temperate:Tropical/model_development/DD multi-slope models/DDexpMulti_geo_ADiag.R')
 source('~/Dropbox/Temperate:Tropical/model_development/DD multi-slope models/DDlinMulti_geo_ADiag.R')
-source('~/Dropbox/Temperate:Tropical/analyses/Apr2018_wholeclade_approach/archived_troubleshooting scripts/16May_troubleshooting_for_Julien/createDDM_BETA.R', chdir = TRUE)
+#source('~/Dropbox/Temperate:Tropical/analyses/Apr2018_wholeclade_approach/archived_troubleshooting scripts/16May_troubleshooting_for_Julien/createDDM_BETA.R', chdir = TRUE)
 source('~/Dropbox/Scripts/R scripts/DDexp_geo_ADiag.R', chdir = TRUE)
 source('~/Dropbox/Scripts/R scripts/DDlin_geo_ADiag.R', chdir = TRUE)
 
@@ -388,7 +388,6 @@ source('~/ddexp/R/fit_t_general.R', chdir = TRUE)
 source('~/ddexp/R/generalized_functions.R', chdir = TRUE)
 source('~/ddexp/R/make.simmap.BGB.R', chdir = TRUE)
 source('~/ddexp/R/stratified_BGB_to_tables.R', chdir = TRUE)
-source('~/Dropbox/Scripts/R scripts/DDexp_geo_ADiag.R', chdir = TRUE)
 source('~/Dropbox/Scripts/R scripts/resortGeoObject.R', chdir = TRUE)
 source('~/ddexp/tests/20180929/CreateGeoObject_simmap.subgroup.R', chdir = TRUE)
 source('~/Dropbox/Scripts/R scripts/CreateSMatrix.R', chdir = TRUE)
@@ -396,9 +395,6 @@ source('~/Dropbox/Scripts/R scripts/ReconcileGeoObjectSMatrix.R', chdir = TRUE)
 source('~/Dropbox/Scripts/R scripts/resortSMatrix.R', chdir = TRUE)
 source('~/Dropbox/Temperate:Tropical/model_development/DD multi-slope models/DDexpMulti_geo_ADiag.R')
 source('~/Dropbox/Temperate:Tropical/model_development/DD multi-slope models/DDlinMulti_geo_ADiag.R')
-source('~/Dropbox/Temperate:Tropical/analyses/Apr2018_wholeclade_approach/archived_troubleshooting scripts/16May_troubleshooting_for_Julien/createDDM_BETA.R', chdir = TRUE)
-source('~/Dropbox/Scripts/R scripts/DDexp_geo_ADiag.R', chdir = TRUE)
-source('~/Dropbox/Scripts/R scripts/DDlin_geo_ADiag.R', chdir = TRUE)
 
 load('~/Dropbox/Manuscripts/PLOS Biology Tanager Project/data/stochastic maps for MCC tree/diet.simmaps.RData')
 
@@ -429,3 +425,4 @@ save(smap2,file="smap2.RData")
 
 o1<-fit_t_comp_subgroup(smap,M,trim.class="fruit",regime.map=smap2,model="DDexp")
 
+##currently, can't get optim to search anything other than starting values, regardless of what they are
