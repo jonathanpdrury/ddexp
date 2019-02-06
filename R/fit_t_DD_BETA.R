@@ -82,7 +82,7 @@ if(is.null(geo.map)&&is.null(subgroup.map)&&is.null(regime.map)){ 	# single slop
 		if(class(class.object)=="try-error"){class.object<-try(CreateClassObject(regime.map,rnd=6))}
 		if(class(class.object)=="try-error"){class.object<-CreateClassObject(regime.map,rnd=7)}
 
-		class.df<-return.class.df(regime.map,class.object)
+		class.df<-return.class.df_subgroup(regime.map,class.object)
 		new_list_function<-create.function.list(regime.map,class.object,class.df)
 		
 		#calculate maxN if DDlin, set to NA if DDexp
@@ -198,7 +198,7 @@ if(is.null(geo.map)&&is.null(subgroup.map)&&is.null(regime.map)){ 	# single slop
 		class.by.class.object<-try(CreateClassbyClassObject_mvMORPH(map.guild=subgroup.simmap.trimmed,map.regime=regime.map,trim.class=subgroup))
 		if(class(class.by.class.object)=="try-error"){class.by.class.object<-try(CreateClassbyClassObject_mvMORPH(map.guild=subgroup.simmap.trimmed,map.regime=regime.map,trim.class=subgroup,rnd=6))}
 		if(class(class.by.class.object)=="try-error"){class.by.class.object<-CreateClassbyClassObject_mvMORPH(map.guild=subgroup.simmap.trimmed,map.regime=regime.map,trim.class=subgroup,rnd=7)}
-		regime.class.df<-return.class.df(class.by.class.object$regime.simmap,class.by.class.object$regime.class.object)
+		regime.class.df<-return.class.df_subgroup(class.by.class.object$regime.simmap,class.by.class.object$regime.class.object)
 
 		#set lineages not in "inv" subgroup to evolve via BM
 		regime.class.df[,which(colnames(class.by.class.object$regime.simmap$mapped.edge)=='Z')+1]=1
@@ -230,7 +230,7 @@ if(is.null(geo.map)&&is.null(subgroup.map)&&is.null(regime.map)){ 	# single slop
 		
 		new_list_function<-create.function.list(regime.simmap.region.trimmed,class.by.class.object$regime.class.object,regime.class.df.trimmed)
 
-		maxN<-ifelse(model=="linear",max(subgroup.class.df.trimmed[,-1]),NA)
+		maxN<-ifelse(model=="linear",max(regime.class.df.trimmed[,-1]),NA)
 		
 		sigma.constraint<-rep(1, dim(regime.simmap.region.trimmed$mapped.edge)[2])
 		beta.constraint<-rep(NA, dim(regime.simmap.region.trimmed$mapped.edge)[2])

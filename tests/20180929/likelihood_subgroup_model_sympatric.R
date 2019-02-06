@@ -17,7 +17,11 @@ likelihood_subgroup_model<-function(data,phylo,geography.object,model=c("DDexp",
 			params<-c(0,par)
 			ddm.ob<-createModel_DDexp_multi_geo(phylo,geo.object=geography.object,r.object=r.object)
 	        tipdistribution <- getTipDistribution(ddm.ob, c(params))            
+	        if(class(tipdistribution)=="try-error"){
+	        V=NA
+	        }else{            
 			V<-tipdistribution$Sigma
+			}
 		}
 	}
 	
@@ -25,14 +29,18 @@ likelihood_subgroup_model<-function(data,phylo,geography.object,model=c("DDexp",
 		if(is.null(r.object)){
 			params<-c(0,par)
 			ddexp.ob<-createModel_DDlin_geo(phylo,geo.object=geography.object)
-	        tipdistribution <- getTipDistribution(ddexp.ob, c(params))            
+	        tipdistribution <- try(getTipDistribution(ddexp.ob, c(params)))            
 			V<-tipdistribution$Sigma
 		} else{
 			
 			params<-c(0,par)
 			ddlm.ob<-createModel_DDlin_multi_geo(phylo,geo.object=geography.object,r.object=r.object)
-	        tipdistribution <- getTipDistribution(ddlm.ob, c(params))            
+	        tipdistribution <- try(getTipDistribution(ddlm.ob, c(params)))
+	        if(class(tipdistribution)=="try-error"){
+	        V=NA
+	        }else{            
 			V<-tipdistribution$Sigma
+			}
 		}
 	}
 	

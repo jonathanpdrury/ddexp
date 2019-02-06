@@ -49,10 +49,10 @@ fit_t_comp_subgroup<-function(map,data,trim.class,model=c("DDexp","DDlin"),par=N
 		opt<-optim(par,likelihood_subgroup_model,phylo=phylo,geography.object=sgeo,data=data,r.object=smat,model=model,method=method, lower=bounds$lower, upper=bounds$upper)
 		sig2 = exp(opt$par[1])^2
 		#sig2_2 = exp(opt$par[2])^2
-		r1 = opt$par[3]
-		r2 = opt$par[4]
+		r1 = opt$par[2]
+		r2 = opt$par[3]
 		z0=likelihood_subgroup_model(data=data,phylo=phylo,geography.object=sgeo,r.object=smat,model=model,par=opt$par,return.z0=TRUE)
-		results<-list(model = model, LH = -opt$value, aic = (2*3 - 2*(-opt$value)), aicc = (2*3 - 2*(-opt$value))+((2*3*(3+1))/(length(phylo$tip.label)-3-1)), free.parameters = 3, sig2_1 = sig2_1, sig2_2 = sig2_2, r1 = r1, r2 = r2, z0 = as.numeric(z0), convergence = opt$convergence)
+		results<-list(model = model, LH = -opt$value, aic = (2*3 - 2*(-opt$value)), aicc = (2*3 - 2*(-opt$value))+((2*3*(3+1))/(length(phylo$tip.label)-3-1)), free.parameters = 3, sig2 = sig2, r1 = r1, r2 = r2, z0 = as.numeric(z0), convergence = opt$convergence)
 		return(results)	
 		}
 

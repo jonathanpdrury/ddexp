@@ -4,8 +4,7 @@
 
 ##24 July 2018: fixing this to
 
-##this is a generalizable function to flexibly return a class.df function for any geo.simmap
-
+##this is a generalizable function to flexibly return a class.df function for any geo.simmap, that is, any case with biogeography where ranges are indicated by single capital letters
 return.class.df<-function(simmap,class.object){
 	states<-colnames(simmap$mapped.edge)
 	for(i in 1:length(states)){
@@ -16,6 +15,7 @@ return.class.df<-function(simmap,class.object){
 	eval(parse(text=paste('return(data.frame(interval=1:length(d1),',paste('d',1:length(states),sep="",collapse=','),'))',sep="")))
 }
 
+##this '*_sympatric' version builds a class.df for the case where a simmap only has one state (i.e., the clade is in sympatry)
 return.class.df_sympatric<-function(simmap){
 	states<-colnames(simmap$mapped.edge)
 	d1<-2:length(simmap$tip.label)
@@ -23,6 +23,7 @@ return.class.df_sympatric<-function(simmap){
 }
 
 
+##this '*_subgroup' version is the version that should be used in all instances where there isn't biogeography (return.class.df should be used for biogeo cases only)
 return.class.df_subgroup<-function(simmap,class.object){
 	states<-colnames(simmap$mapped.edge)
 	for(i in 1:length(states)){

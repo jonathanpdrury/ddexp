@@ -1,4 +1,17 @@
+######################################
+######################################
+######################################
+######################################
+
 ##testing two slope version
+
+######################################
+######################################
+######################################
+######################################
+
+require(phytools)
+require(RPANDA)
 
 set.seed(1234)
 
@@ -54,7 +67,7 @@ o1al<-fitTipData(ddl.ob,trait[1,],params0,GLSstyle=TRUE)
 source('~/ddexp/R/fit_t_DD_BETA.R')
 
 
-o1b<-fit_t_DD(phylo,data=trait[1,],model="exponential",regime.map=smap,method=method)
+o1b<-fit_t_DD(phylo=phylo,data=trait[1,],model="exponential",regime.map=smap)
 #> o1b
 #$LogLik
 #[1] 36.67312
@@ -133,7 +146,7 @@ o1bl<-fit_t_DD(phylo,data=trait[1,],model="linear",regime.map=smap,method="BB")
 -getDataLikelihood(ddl.ob, trait[1,], params=c(o1bl$anc,log(sqrt(o1bl$rates[2,1])),o1bl$rates[1,2],o1bl$rates[1,1]))
 #[1] 31.72649
 
-##these are returning the same likelihood, but for whatever reason fit_t_DD is not optimising correctly
+##these are returning the same likelihood, but for whatever reason fit_t_DD is not optimising correctly for linear version
 
 
 ###two-slope version is working fine for exponential case, but not linear case, where optimisation doesn't reach maximum
@@ -178,6 +191,7 @@ DDexp.geo.fit<-fit_t_comp(BGB.examples$Canidae.phylo, data, model="DDexp", geogr
 
 ###checking fit_t_DD
 source('~/ddexp/R/make.simmap.BGB.R', chdir = TRUE)
+source('~/ddexp/R/fit_t_DD_BETA.R')
 
 require(geiger)
 require(data.table)
@@ -270,6 +284,8 @@ o1E<-fit_t_comp_subgroup(smap,M,trim.class="fruit",regime.map=NULL,model="DDexp"
 #
 #$convergence
 #[1] 0
+
+source('~/ddexp/R/fit_t_DD_BETA.R')
 
 o3E<-fit_t_DD(phylo=smap,data=M,model="exponential",subgroup="fruit",subgroup.map=smap,method="BB")
 #> o3E
@@ -383,8 +399,6 @@ source('~/ddexp/tests/20180929/likelihood_subgroup_model_sympatric.R', chdir = T
 source('~/ddexp/R/CreateBioGeoB_Object_subclade.R', chdir = TRUE)
 source('~/ddexp/R/CreateClassbyClassObject_mvMORPH.r', chdir = TRUE)
 source('~/ddexp/R/CreateGeobyClassObject_mvMORPH.R', chdir = TRUE)
-source('~/ddexp/R/fit_t_general_subgroup.R', chdir = TRUE)
-source('~/ddexp/R/fit_t_general.R', chdir = TRUE)
 source('~/ddexp/R/generalized_functions.R', chdir = TRUE)
 source('~/ddexp/R/make.simmap.BGB.R', chdir = TRUE)
 source('~/ddexp/R/stratified_BGB_to_tables.R', chdir = TRUE)
@@ -423,6 +437,139 @@ save(smap2,file="smap2.RData")
 
 ##fitting with RPANDA-esque approach:
 
-o1<-fit_t_comp_subgroup(smap,M,trim.class="fruit",regime.map=smap2,model="DDexp")
+o1e<-fit_t_comp_subgroup(smap,M,trim.class="fruit",regime.map=smap2,model="DDexp")
+#$model
+#[1] "DDexp"
+#
+#$LH
+#[1] -19.55769
+#
+#$aic
+#[1] 45.11538
+#
+#$aicc
+#[1] 45.34839
+#
+#$free.parameters
+#[1] 3
+#
+#$sig2
+#[1] 0.01114394
+#
+#$r1
+#[1] -0.02652755
+#
+#$r2
+#[1] -0.0266374
+#
+#$z0
+#[1] 3.095275
+#
+#$convergence
+#[1] 0
 
-##currently, can't get optim to search anything other than starting values, regardless of what they are
+o1l<-fit_t_comp_subgroup(smap,M,trim.class="fruit",regime.map=smap2,model="DDlin")
+
+#$model
+#[1] "DDlin"
+#
+#$LH
+#[1] -20.46297
+#
+#$aic
+#[1] 46.92595
+#
+#$aicc
+#[1] 47.15896
+#
+#$free.parameters
+#[1] 3
+#
+#$sig2
+#[1] 0.005889312
+#
+#$r1
+#[1] 2.861665e-05
+#
+#$r2
+#[1] 2.31407e-07
+#
+#$z0
+#[1] 3.089581
+#
+#$convergence
+#[1] 0
+
+source('~/ddexp/R/fit_t_DD_BETA.R')
+
+o3e<-fit_t_DD(phylo=smap,data=M,model="exponential",subgroup="fruit",subgroup.map=smap,regime.map=smap2)
+#> o3e
+#$LogLik
+#[1] -19.09782
+#
+#$AIC
+#[1] 46.19563
+#
+#$AICc
+#[1] 46.9229
+#
+#$rates
+#        temperate          Z    tropical
+#beta  -0.01317258 0.00000000 -0.02096752
+#sigma  0.01274553 0.01274553  0.01274553
+#
+#$anc
+#[1] 3.113256
+#
+#$convergence
+#[1] 0
+#
+#$hess.values
+#[1] 0
+#
+#$error
+#NULL
+#
+#$param
+#[1] -0.01317258 -0.02096752 -4.36257503
+#
+#$phyloTrans
+#NULL
+
+
+o3l<-fit_t_DD(phylo=smap,data=M,model="linear",subgroup="fruit",subgroup.map=smap,regime.map=smap2,method="BB")
+
+#> o3l
+#$LogLik
+#[1] -19.24493
+#
+#$AIC
+#[1] 46.48986
+#
+#$AICc
+#[1] 47.21713
+#
+#$rates
+#          temperate          Z      tropical
+#beta  -7.642137e-05 0.00000000 -0.0001139452
+#sigma  1.052315e-02 0.01052315  0.0105231490
+#
+#$anc
+#[1] 3.104234
+#
+#$convergence
+#[1] 0
+#
+#$hess.values
+#[1] 0
+#
+#$error
+#NULL
+#
+#$param
+#[1] -7.642137e-05 -1.139452e-04  1.052315e-02
+#
+#$phyloTrans
+#NULL
+
+##I get roughly the same likelihood when I run likelihood_subgroup_model() on the MLE pars from fit_t_DD approach--which leads me to conclude the fit_t_DD model is workign fine and optimising better than RPANDA tools
