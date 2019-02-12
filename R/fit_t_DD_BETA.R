@@ -122,7 +122,6 @@ if(is.null(geo.map)&&is.null(subgroup.map)&&is.null(regime.map)){ 	# single slop
 		if(!all(phylo$tip.label %in% as.phylo(subgroup.map)$tip.label)) { stop("some lineages in phylogeny don't appear in subgroup map")}
 		if( is.null(subgroup) || (!subgroup%in%colnames(subgroup.map$mapped.edge))){ stop("specify a subgroup that appears as a mapped regime in subgroup.map")}
 
-###is this really what we want for subgroup? might inadvertently get rid of trimclass species? DOUBEL CHECK		
 		#trim subgroup simmap to species found in focal phylogeny
 		subgroup.trimmed<-drop.tip.simmap(subgroup.map,subgroup.map$tip.label[which(!subgroup.map$tip.label%in%phylo$tip.label)])
 		
@@ -185,7 +184,6 @@ if(is.null(geo.map)&&is.null(subgroup.map)&&is.null(regime.map)){ 	# single slop
 
 ###This is the version from fits for latitude project	
 		#trim subgroup.map and regime.map to species found in focal phylogeny (i.e., a phylogeny trimmed to the taxa of interest)
-###is this really what we want for subgroup? might inadvertently get rid of trimclass species? DOUBEL CHECK (I think it's ok for regime map)
 		
 		subgroup.simmap.trimmed<-drop.tip.simmap(subgroup.map,subgroup.map$tip.label[which(!subgroup.map$tip.label%in%phylo$tip.label)])
 
