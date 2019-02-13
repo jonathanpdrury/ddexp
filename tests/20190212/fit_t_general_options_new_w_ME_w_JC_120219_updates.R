@@ -6,7 +6,7 @@
 
 # Fit a model for which rates depends on a time-serie curve with regime specific parameters estimates.
 
-fit_t_general <- function(tree, data, fun, error=NULL, beta=NULL, sigma=NULL, model=c("exponential","linear"), method=c("L-BFGS-B","BB"), maxN=NA, upper=Inf, lower=-20, control=list(maxit=20000), diagnostic=TRUE, echo=TRUE, constraint=NULL) {
+fit_t_general <- function(tree, data, fun, class.df, class.object, error=NULL, beta=NULL, sigma=NULL, model=c("exponential","linear"), method=c("L-BFGS-B","BB"), upper=Inf, lower=-Inf, control=list(maxit=20000), diagnostic=TRUE, echo=TRUE, constraint=NULL) {
   
   require(mvMORPH)
   if(!inherits(tree,"simmap")==TRUE) stop("For now only simmap-like mapped trees are allowed.","\n")
@@ -120,11 +120,11 @@ fit_t_general <- function(tree, data, fun, error=NULL, beta=NULL, sigma=NULL, mo
     
     if(model=="exponential"){  
       # because "times" assume that the root state is at 0 and funEnv is from the past to the present.
-      f<-function(x, sigma, beta, funInd){sigma*exp(beta*fun[[funInd]](x))}
+      f<-function(x, sigma, beta, funInd){sigma*exp(beta*fun[[funInd]](x,df=class.df,times=class.object$times))}
       
     }else if(model=="linear"){
       # Clim-lin function
-      f<-function(x, sigma, beta, funInd){sigma+beta*fun[[funInd]](x)}
+      f<-function(x, sigma, beta, funInd){sigma+beta*fun[[funInd]](x,df=class.df,times=class.object$times)}
      
     }
     
