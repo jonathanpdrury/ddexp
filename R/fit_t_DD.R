@@ -10,7 +10,7 @@ require(phytools)
 #source('trimSimmap.R')
 #source('CreateClassbyClassObject_mvMORPH.R')
 
-source('~/ddexp/R/fit_t_general_options_old.R')
+#source('~/ddexp/R/fit_t_general_options_old.R')
 source('~/ddexp/R/generalized_functions.R')
 source('~/Dropbox/Scripts/R scripts/CreateClassObject.R', chdir = TRUE)
 source('~/Dropbox/Scripts/R scripts/trimSimmap.R', chdir = TRUE)
@@ -19,9 +19,9 @@ source('~/ddexp/R/CreateClassbyClassObject_mvMORPH.R')
 ### think about adding in functionality for speeding up computation (e.g., so that "CreateClassObject[...]" scripts don't have to be run over and over unecessarily)
 ### check whether the biogeo stuff only works for stratified or unstratfied biogeographies
 
-fit_t_DD<-function(phylo,data,model=c("exponential","linear"),geo.map=NULL,subgroup=NULL,subgroup.map=NULL,regime.map=NULL,error=NULL, beta=NULL, sigma=NULL, method=c("L-BFGS-B","BB"), upper=Inf, lower=-20, control=list(maxit=20000), diagnostic=FALSE, echo=FALSE){
+fit_t_DD<-function(phylo,data,model=c("exponential","linear","both"),geo.map=NULL,subgroup=NULL,subgroup.map=NULL,regime.map=NULL,error=NULL, beta=NULL, sigma=NULL, method=c("L-BFGS-B","BB"), upper=Inf, lower=-Inf, control=list(maxit=20000), diagnostic=FALSE, echo=FALSE){
 	
-	if(!model%in%c("exponential","linear")){ stop("model must be stated as 'exponential' or 'linear'")}
+	if(!model%in%c("exponential","linear","both")){ stop("model must be stated as 'exponential' , 'linear', or 'both' ")}
 	
 if(is.null(geo.map)&&is.null(subgroup.map)&&is.null(regime.map)){ 	# single slope version without BioGeoBEARS biogeography or subgroup pruning
 	
@@ -56,8 +56,6 @@ if(is.null(geo.map)&&is.null(subgroup.map)&&is.null(regime.map)){ 	# single slop
 #		class.df<-return.class.df_sympatric(smap)
 #		new_list_function<-create.function.list_sympatric(smap,class.df)
 #		
-#		#calculate maxN if DDlin, set to NA if DDexp
-#		maxN<-ifelse(model=="linear",max(class.df[,2]),NA)
 #		
 #		#fit model
 #		sigma.constraint<-rep(1, dim(smap$mapped.edge)[2])
@@ -83,33 +81,40 @@ if(is.null(geo.map)&&is.null(subgroup.map)&&is.null(regime.map)){ 	# single slop
 		if(class(class.object)=="try-error"){class.object<-CreateClassObject(regime.map,rnd=7)}
 
 		class.df<-return.class.df_subgroup(regime.map,class.object)
-		new_list_function<-create.function.list(regime.map,class.object,class.df)
-		
-		#calculate maxN if DDlin, set to NA if DDexp
-		
-		maxN<-ifelse(model=="linear",max(class.df[,-1]),NA)
-		
+		new_list_function<-create.function.list(regime.map,times=class.object$times,df=class.df)
+				
 		#fit model
 		sigma.constraint<-rep(1, dim(regime.map$mapped.edge)[2])
 		beta.constraint<-seq(1,by=1,length.out=dim(regime.map$mapped.edge)[2])
 		
-		out<-fit_t_general(tree=regime.map,data=data,fun=new_list_function,error=error, sigma=sigma, beta=beta, model=model,method=method,maxN=maxN, upper=upper, lower=lower, control=control,diagnostic=diagnostic, echo=echo,constraint=list(sigma=sigma.constraint, beta=beta.constraint))
+		if(model%in%c("exponential","linear")){
+		out<-fit_t_general(tree=regime.map,data=data,fun=new_list_function,class.object=class.object,class.df=class.df,error=error, sigma=sigma, beta=beta, model=model,method=method, upper=upper, lower=lower, control=control,diagnostic=diagnostic, echo=echo,constraint=list(sigma=sigma.constraint, beta=beta.constraint))
+		} else{
+		out.exp=fit_t_general(tree=regime.map,data=data,fun=new_list_function,class.object=class.object,class.df=class.df,error=error, sigma=sigma, beta=beta, model="exponential",method=method, upper=upper, lower=lower, control=control,diagnostic=diagnostic, echo=echo,constraint=list(sigma=sigma.constraint, beta=beta.constraint))
+		out.lin=fit_t_general(tree=regime.map,data=data,fun=new_list_function,class.object=class.object,class.df=class.df,error=error, sigma=sigma, beta=beta, model="linear",method=method, upper=upper, lower=lower, control=control,diagnostic=diagnostic, echo=echo,constraint=list(sigma=sigma.constraint, beta=beta.constraint))
+		out<-list(exponential.fit=out.exp,linear.fit=out.lin)
+		}
 		
 }  else if (is.null(subgroup.map)&&is.null(regime.map)&&!is.null(geo.map)) { # single slope version with BioGeoBEARS biogeography but no subgroup pruning
 
 		geo.simmap<-geo.map
 		hold<-CreateClassObject(geo.simmap)
 		geo.class.df<-return.class.df(geo.simmap,hold)
-		new_list_function <- create.function.list(geo.simmap=geo.simmap,geo.class.object=hold, geo.class.df=geo.class.df)
-
-		maxN<-ifelse(model=="linear",max(class.df[,-1]),NA)
+		class.object=hold
+		class.df=geo.class.df
+		new_list_function <- create.function.list(geo.simmap=geo.simmap, df=class.df,times=class.object$times)
 
 		sigma.constraint<-rep(1, dim(geo.map$mapped.edge)[2])
 		beta.constraint<-rep(1, dim(geo.map$mapped.edge)[2])
-
-		out<-fit_t_general(tree=geo.map,data=data,fun=new_list_function,error=error, sigma=sigma, beta=beta, model=model,method=method,maxN=maxN, upper=upper, lower=lower, control=control,diagnostic=diagnostic, echo=echo,constraint=list(sigma=sigma.constraint, beta=beta.constraint))
-
-	
+		
+		if(model%in%c("exponential","linear")){
+		out<-fit_t_general(tree=geo.map,data=data,fun=new_list_function,class.object=class.object,class.df=class.df,error=error, sigma=sigma, beta=beta, model=model,method=method, upper=upper, lower=lower, control=control,diagnostic=diagnostic, echo=echo,constraint=list(sigma=sigma.constraint, beta=beta.constraint))
+		} else{
+		out.exp<-fit_t_general(tree=geo.map,data=data,fun=new_list_function,class.object=class.object,class.df=class.df,error=error, sigma=sigma, beta=beta, model="exponential",method=method, upper=upper, lower=lower, control=control,diagnostic=diagnostic, echo=echo,constraint=list(sigma=sigma.constraint, beta=beta.constraint))
+		out.lin<-fit_t_general(tree=geo.map,data=data,fun=new_list_function,class.object=class.object,class.df=class.df,error=error, sigma=sigma, beta=beta, model="linear",method=method, upper=upper, lower=lower, control=control,diagnostic=diagnostic, echo=echo,constraint=list(sigma=sigma.constraint, beta=beta.constraint))
+		out<-list(exponential.fit=out.exp,linear.fit=out.lin)
+		}
+		
 }  else if (is.null(subgroup.map)&&!is.null(regime.map)&&!is.null(geo.map)) {  # two slope version with BioGeoBEARS biogeography but no subgroup pruning
 	
 		#need to add other cases down the line
@@ -164,25 +169,27 @@ if(is.null(geo.map)&&is.null(subgroup.map)&&is.null(regime.map)){ 	# single slop
 			#forces time to start at root of trimmed tree; would be better to pass times directly to new_list_function to avoid overwriting this slot of the out object, which could lead to errors
 			subgroup.class.df.trimmed<-new.subgroup.class.df.trimmed
 		}
-		
-		new_list_function<-create.function.list(trimclass.subgroup.trimmed.tips,class.object,subgroup.class.df.trimmed)
-		
-		#calculate maxN if DDlin, set to NA if DDexp
-		
-		maxN<-ifelse(model=="linear",max(subgroup.class.df.trimmed[,-1]),NA)
-		
+	
+		class.df=subgroup.class.df.trimmed
+		new_list_function<-create.function.list(trimclass.subgroup.trimmed.tips,times=class.object$times,df=class.df)
+				
 		sigma.constraint<-rep(1, dim(trimclass.subgroup.trimmed.tips$mapped.edge)[2])
 		beta.constraint<-rep(NA, dim(trimclass.subgroup.trimmed.tips$mapped.edge)[2])
 		beta.constraint[which(colnames(trimclass.subgroup.trimmed.tips$mapped.edge)==subgroup)]<-1
 		
-		out<-fit_t_general(tree=trimclass.subgroup.trimmed.tips, data=data, fun=new_list_function,error=error, sigma=sigma, beta=beta, model=model,method=method,maxN=maxN, upper=upper, lower=lower, control=control,diagnostic=diagnostic, echo=echo,constraint=list(sigma=sigma.constraint, beta=beta.constraint))
-
+		if(model%in%c("exponential","linear")){
+		out<-fit_t_general(tree=trimclass.subgroup.trimmed.tips, data=data, fun=new_list_function,class.object=class.object,class.df=class.df,error=error, sigma=sigma, beta=beta, model=model,method=method, upper=upper, lower=lower, control=control,diagnostic=diagnostic, echo=echo,constraint=list(sigma=sigma.constraint, beta=beta.constraint))
+		} else{
+		out.exp=fit_t_general(tree=trimclass.subgroup.trimmed.tips, data=data, fun=new_list_function,class.object=class.object,class.df=class.df,error=error, sigma=sigma, beta=beta, model="exponential",method=method, upper=upper, lower=lower, control=control,diagnostic=diagnostic, echo=echo,constraint=list(sigma=sigma.constraint, beta=beta.constraint))
+		out.lin=fit_t_general(tree=trimclass.subgroup.trimmed.tips, data=data, fun=new_list_function,class.object=class.object,class.df=class.df,error=error, sigma=sigma, beta=beta, model="linear",method=method, upper=upper, lower=lower, control=control,diagnostic=diagnostic, echo=echo,constraint=list(sigma=sigma.constraint, beta=beta.constraint))
+		out<-list(exponential.fit=out.exp,linear.fit=out.lin)
+		}
+		
 }  else if (is.null(geo.map)&&!is.null(regime.map)&&!is.null(subgroup.map)) {  # two slope version with subgroup pruning but no BioGeoBEARS biogeography
 
 		if(!all(phylo$tip.label %in% as.phylo(subgroup.map)$tip.label)) { stop("some lineages in phylogeny don't appear in subgroup map")}
 		if( is.null(subgroup) || (!subgroup%in%colnames(subgroup.map$mapped.edge))){ stop("specify a subgroup that appears as a mapped regime in subgroup.map")}
 
-###This is the version from fits for latitude project	
 		#trim subgroup.map and regime.map to species found in focal phylogeny (i.e., a phylogeny trimmed to the taxa of interest)
 		
 		subgroup.simmap.trimmed<-drop.tip.simmap(subgroup.map,subgroup.map$tip.label[which(!subgroup.map$tip.label%in%phylo$tip.label)])
@@ -225,17 +232,22 @@ if(is.null(geo.map)&&is.null(subgroup.map)&&is.null(regime.map)){ 	# single slop
 			#forces time to start at root of trimmed tree; would be better to pass times directly to new_list_function to avoid overwriting this slot of the class.by.class.object object, which could lead to errors
 			regime.class.df.trimmed<-new.regime.class.df.trimmed
 		}
+		class.df=regime.class.df.trimmed
+		class.object=class.by.class.object$regime.class.object
 		
-		new_list_function<-create.function.list(regime.simmap.region.trimmed,class.by.class.object$regime.class.object,regime.class.df.trimmed)
-
-		maxN<-ifelse(model=="linear",max(regime.class.df.trimmed[,-1]),NA)
+		new_list_function<-create.function.list(regime.simmap.region.trimmed,df=class.df,times=class.object$times)
 		
 		sigma.constraint<-rep(1, dim(regime.simmap.region.trimmed$mapped.edge)[2])
 		beta.constraint<-rep(NA, dim(regime.simmap.region.trimmed$mapped.edge)[2])
 		beta.constraint[which(colnames(regime.simmap.region.trimmed$mapped.edge)!="Z")]<-1:(dim(regime.simmap.region.trimmed$mapped.edge)[2]-1)
 		
-		out<-fit_t_general(tree=regime.simmap.region.trimmed, data=data, fun=new_list_function,error=error, sigma=sigma, beta=beta, model=model,method=method,maxN=maxN, upper=upper, lower=lower, control=control,diagnostic=diagnostic, echo=echo,constraint=list(sigma=sigma.constraint, beta=beta.constraint))
-
+		if(model%in%c("exponential","linear")){
+		out<-fit_t_general(tree=regime.simmap.region.trimmed, data=data, fun=new_list_function,class.object=class.object,class.df=class.df,error=error, sigma=sigma, beta=beta, model=model,method=method, upper=upper, lower=lower, control=control,diagnostic=diagnostic, echo=echo,constraint=list(sigma=sigma.constraint, beta=beta.constraint))
+		} else{
+		out.exp<-fit_t_general(tree=regime.simmap.region.trimmed, data=data, fun=new_list_function,class.object=class.object,class.df=class.df,error=error, sigma=sigma, beta=beta, model="exponential",method=method, upper=upper, lower=lower, control=control,diagnostic=diagnostic, echo=echo,constraint=list(sigma=sigma.constraint, beta=beta.constraint))
+		out.lin<-fit_t_general(tree=regime.simmap.region.trimmed, data=data, fun=new_list_function,class.object=class.object,class.df=class.df,error=error, sigma=sigma, beta=beta, model="linear",method=method, upper=upper, lower=lower, control=control,diagnostic=diagnostic, echo=echo,constraint=list(sigma=sigma.constraint, beta=beta.constraint))
+		out<-list(exponential.fit=out.exp,linear.fit=out.lin)
+		}
 #######	
 }  else if (is.null(regime.map)&&!is.null(subgroup.map)&&!is.null(geo.map)) { # single slope version with subgroup pruning and BioGeoBEARS biogeography
 	
