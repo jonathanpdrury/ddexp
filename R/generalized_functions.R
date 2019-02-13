@@ -37,7 +37,7 @@ return.class.df_subgroup<-function(simmap,class.object){
 
 ##this is a generalizable function to flexibly return a list of functions (to pass to fit_t_general*) for any geo.simmap
 
-create.function.list<-function(geo.simmap, geo.class.object,geo.class.df){
+create.function.list_old<-function(geo.simmap, geo.class.object,geo.class.df){
 	if(is.null(geo.simmap)){stop('provide geo.simmap')}
 	if(is.null(geo.class.object)){stop('provide geo.class.object')}
 	if(is.null(geo.class.df)){stop('provide class.df')}
@@ -57,6 +57,29 @@ create.function.list<-function(geo.simmap, geo.class.object,geo.class.df){
 	return(funlist)
 
 }
+
+create.function.list<-function(geo.simmap,df, times){
+	if(is.null(geo.simmap)){stop('provide geo.simmap')}
+	if(is.null(times)){stop('provide vector of times from class.object')}
+	if(is.null(df)){stop('provide class.df')}
+	#if(is.null(geo.class.object$times)){stop('$times missing from geo.class.object')}
+	states<-colnames(geo.simmap$mapped.edge)
+	funlist<-list()
+	if(dim(df)[2]!=(length(states)+1)){stop('class.df is of incorrect dimensions')}
+	
+	for(i in 1:length(states)){
+		st<-states[i]
+		#cols=paste("c(",paste(which(grepl(paste(strsplit(st,split="")[[1]],collapse="|"),states))+1,collapse=","),")",sep="") #this gives the columns to extract from class.df
+		#eval(parse(text=paste("funlist[[",i,"]]<-function(x){;values <- geo.class.object$times;res <- findInterval(x, values);index <- res==0;res[index==TRUE] <- 1;return(as.matrix(geo.class.df[res,",cols,"]));}",sep="")))
+		#eval(parse(text=paste("funlist[[",i,"]]<-function(x){;values <- ",deparse(substitute(geo.class.object)),"$times;res <- findInterval(x, values);index <- res==0;res[index==TRUE] <- 1;return(as.matrix(",deparse(substitute(geo.class.df)),"[res,",cols,"]));}",sep="")))
+		#eval(parse(text=paste("funlist[[",i,"]]<-function(x,df,times){;values <- ",deparse(substitute(times)),";res <- findInterval(x, values);index <- res==0;res[index==TRUE] <- 1;return(",deparse(substitute(df)),"[res,",i+1,"]);}",sep="")))
+		eval(parse(text=paste("funlist[[",i,"]]<-function(x,df,times){;values <- times;res <- findInterval(x, values);index <- res==0;res[index==TRUE] <- 1;return(df[res,",i+1,"]);}",sep="")))
+		}
+			
+	return(funlist)
+
+}
+
 
 create.function.list_sympatric<-function(simmap,class.df){
 	if(is.null(class.df)){stop('provide class.df')}
