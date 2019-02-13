@@ -1,25 +1,31 @@
 #this is a wrapper script designed to fit all univariate DD models built so far
-#i.e., two rate models vs. single rate models
-#models with biogeography vs. models without biogeography
-#models with subgroup pruning vs. models without subgroup pruning
-require(phytools)
+# 'i.e., two-rate models vs. single-rate models (specify 'regime.map' for two-rate models, see details below)
+#' models with biogeography vs. models without biogeography (specify 'geo.map' for models incorporating biogeography, see details below)
+#' models with subgroup pruning vs. models without subgroup pruning (specify 'subgroup.map' for subgroup pruning algorithm, see details below)
+#'
+#' @param phylo: a phylogenetic tree or simmap containing all of the lineages in 'data' vector; in case of subgroup pruning, it can include other lineages
+#' @param data: a named vector of continuous trait values with names corresponding to phylo$tip.labels. In case of subgroup pruning algorithm, data should only be provided for lineages that are in the subgroup at the present (i.e., length(data) won't necessarily match length(phylo$tip.label))
+#' @param model: "exponential" returns exponential diversity dependent model fit, "linear" returns linear diversity dependent model fit, "both" returns a list with both fits, as elements $exponential and $linear
+#' @param geo.map: an ancestral biogeography reconstruction, (matching 'phylo' object) stored as a simmap object (i.e., created using make.simmap.BGB.R)
+#' @param subgroup.map: a simmap object (containing all lineages in 'phylo' object) which contains lineages in 'subgroup' specified above
+#' @param subgroup: a string identifying the name of the guild ((((data just includes these? what is passed to phylo then?)))) to which to fit the model, as it appears in the simmap specified in 'subgroup.map'
+#' @param regime.map: a simmap object (constructed on the exact same phylogeny passed to the 'phylo' object) which contains a reconstruction of the different rate classes (e.g., tropical and temperate lineages). Currently only tested for two-regime cases.
+#' @param error: a named vector (in the same order as 'data') which specifies the standard error of trait measurements, if measurement error is to be accounted for in fit (specify as NULL if not)
+#' @param beta: a vector of starting values for the slope parameter estimation
+#' @param sigma: a vector of starting values for the rate parameter estimation
+#' @param method: optimisation algorithm (see optim())
+#' @param upper: upper bound on optimisation algorithm, if "L-BFGS-B" is chosen as 'method'
+#' @param lower: lower bound on optimisation algorithm, if "L-BFGS-B" is chosen as 'method'
+#' @param control: further commands passed to optim()
+#' @param diagnostic: logical specifying whether diagnostic information should printed to the console
+#' @param echo: logical specifying whether model fits should printed in the console
 
-#source('fit_t_general_options_old.R')
-#source('generalized_functions.R')
-#source('CreateClassObject.R')
-#source('trimSimmap.R')
-#source('CreateClassbyClassObject_mvMORPH.R')
+#notes for future improvement:
 
-#source('~/ddexp/R/fit_t_general_options_old.R')
-source('~/ddexp/R/generalized_functions.R')
-source('~/Dropbox/Scripts/R scripts/CreateClassObject.R', chdir = TRUE)
-source('~/Dropbox/Scripts/R scripts/trimSimmap.R', chdir = TRUE)
-source('~/ddexp/R/CreateClassbyClassObject_mvMORPH.R')
+#--can 'phylo' be removed completely and just inferred based on maps that are passed?
+#--for biogeography case, return modified results matrix
 
-### think about adding in functionality for speeding up computation (e.g., so that "CreateClassObject[...]" scripts don't have to be run over and over unecessarily)
-### check whether the biogeo stuff only works for stratified or unstratfied biogeographies
-
-fit_t_DD<-function(phylo,data,model=c("exponential","linear","both"),geo.map=NULL,subgroup=NULL,subgroup.map=NULL,regime.map=NULL,error=NULL, beta=NULL, sigma=NULL, method=c("L-BFGS-B","BB"), upper=Inf, lower=-Inf, control=list(maxit=20000), diagnostic=FALSE, echo=FALSE){
+fit_t_DD<-function(phylo,data,model=c("exponential","linear","both"),geo.map=NULL,subgroup.map=NULL,subgroup=NULL,regime.map=NULL,error=NULL, beta=NULL, sigma=NULL, method=c("Nelder-Mead","L-BFGS-B","BB"), upper=Inf, lower=-Inf, control=list(maxit=20000), diagnostic=FALSE, echo=FALSE){
 	
 	if(!model%in%c("exponential","linear","both")){ stop("model must be stated as 'exponential' , 'linear', or 'both' ")}
 	
