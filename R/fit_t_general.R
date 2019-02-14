@@ -1,9 +1,16 @@
+# just to remember what are the different options
+# constraint=TRUE :
+# option: 1 sigma (shared sigma)
+# option: constrain some beta to be the same of constrain one of the beta to be zero
+# error: we can estimate unknown variation no explained by the model in top of known error. Just have to change some parts of thefunction
+
 # Fit a model for which rates depends on a time-serie curve with regime specific parameters estimates.
 
-fit_t_general <- function(tree, data, fun, error=NULL, beta=NULL, sigma=NULL, model=c("exponential","linear"), method=c("L-BFGS-B","BB"), upper=Inf, lower=-20, control=list(maxit=20000), diagnostic=TRUE, echo=TRUE, constraint=TRUE) {
+fit_t_general <- function(tree, data, fun, class.df, class.object, error=NULL, beta=NULL, sigma=NULL, model=c("exponential","linear"), method=c("L-BFGS-B","BB"), upper=Inf, lower=-Inf, control=list(maxit=20000), diagnostic=TRUE, echo=TRUE, constraint=NULL) {
   
   require(mvMORPH)
   if(!inherits(tree,"simmap")==TRUE) stop("For now only simmap-like mapped trees are allowed.","\n")
+  tree <- reorderSimmap(tree, order="postorder")
   
   # Parameters
   if(!is.null(names(data))) data <- data[tree$tip.label]
@@ -18,42 +25,71 @@ fit_t_general <- function(tree, data, fun, error=NULL, beta=NULL, sigma=NULL, mo
   times<-max(times)-times
   # Max time
   mtot=max(nodeHeights(tree))
-  onestate<-ifelse(dim(tree$mapped.edge)[2]==1,TRUE,FALSE)
+  onestate<-ifelse(dim(tree$mapped.edge)[2]==1,TRUE,FALSE) 
   
   # Number of species
   n=length(tree$tip.label)
   # Number of traits (for future versions)
   k=1
-  # Number of maps (selective regimes)
-  if(constraint){
-      number_maps <- 1
-  }else{
-      number_maps <- ncol(tree$mapped.edge)
-  }
+  
+    # Number of maps (selective regimes)
+    nstates <- ncol(tree$mapped.edge)
+    if(is.null(constraint)){
+           number_maps_beta <- number_maps_sigma <- nstates 
+           index.user.sigma <- index.user.beta <- 1:number_maps_sigma
+        
+    }else{ 
+        if(is.null(constraint[["sigma"]])) sigConst <- FALSE else sigConst <- TRUE
+        if(is.null(constraint[["beta"]])) betConst <- FALSE else betConst <- TRUE
+        
+        if(sigConst & betConst){ # i) both beta and sigma constrained
+            number_maps_beta <- length(unique(constraint$beta[!is.na(constraint$beta)]))
+            number_maps_sigma <- length(unique(constraint$sigma))  
+            # set the indices
+            index.user.sigma <- constraint$sigma
+            index.user.beta <- constraint$beta
+            
+        }else if(!sigConst & betConst){ # ii) only beta constrained
+            number_maps_beta <- length(unique(constraint$beta[!is.na(constraint$beta)]))
+            number_maps_sigma <- nstates 
+            
+            index.user.sigma <- 1:number_maps_sigma
+            index.user.beta <- constraint$beta
+            
+        }else if(sigConst & !betConst){ # iii) only sigma constrained
+            number_maps_beta <- nstates 
+            number_maps_sigma <- length(unique(constraint$sigma))
+            
+            index.user.sigma <- constraint$sigma
+            index.user.beta <- 1:number_maps_beta
+        }
+
+    }
+    
   
   # Param likelihood contrasts (we are organizing the tree to be postorder for an efficient traversal)
-  ind=reorder(tree,"postorder",index.only=TRUE)
+  #ind=reorder(tree,"postorder",index.only=TRUE)
   phy=tree
-  phy$edge.length<-phy$edge.length[ind]
-  phy$edge<-phy$edge[ind,]
+  #phy$edge.length<-phy$edge.length[ind]
+  #phy$edge<-phy$edge[ind,]
   
   # check for simmap like format
-  if(inherits(tree,"simmap")){
-    phy$mapped.edge<-phy$mapped.edge[ind,]
-    phy$maps<-phy$maps[ind]
-  }
+  #if(inherits(tree,"simmap")){
+  #  phy$mapped.edge<-phy$mapped.edge[ind,]
+  #  phy$maps<-phy$maps[ind]
+  #}
   #phy <- reorderSimmap(tree, order="pruningwise")
   
   # Random starting value if not provided
   if(is.null(beta)){
-    beta=rep(0, number_maps)
+    beta=rep(0, number_maps_beta)
   }
   if(is.null(sigma)){
-    sigma=rep(sum(pic(data,tree)^2)/n, number_maps)
+    sigma=rep(sum(pic(data,tree)^2)/n, number_maps_sigma)
   }
   
   if(model=="linear"){
-    startval=c(beta,sigma)
+    startval=c(beta,log(sigma))
     nbeta=length(beta)
     nsigma=length(sigma)
   }else if(model=="exponential"){
@@ -67,6 +103,12 @@ fit_t_general <- function(tree, data, fun, error=NULL, beta=NULL, sigma=NULL, mo
     ## Index error
     index_error<-sapply(1:n, function(x){ which(phy$edge[,2]==x)})
     startval=c(startval,0.001)
+    # to construct a mixed model (refer to l.172 of the code below)
+    if(is.numeric(error)){
+      error_meas = error^2
+    }else{
+      error_meas = numeric(n)       
+    }
   }
   
   ##--------------Fonction-generale-DD-Env-------------------------------------------##
@@ -78,22 +120,12 @@ fit_t_general <- function(tree, data, fun, error=NULL, beta=NULL, sigma=NULL, mo
     
     if(model=="exponential"){  
       # because "times" assume that the root state is at 0 and funEnv is from the past to the present.
-      # this will only work in the constraint=TRUE instance
-      if(constraint){
-      #f<-function(x, sigma, beta, funInd){(sigma*sum(exp(beta*fun[[funInd]](x))))/length(fun[[funInd]](x))}
-      #f<-function(x, sigma, beta, funInd){(sigma*rowSums(exp(beta*fun[[funInd]](x))))/ncol(fun[[funInd]](x))}
-     # f<-function(x, sigma, beta, funInd){sigma*(rowSums(exp(beta*fun[[funInd]](x)))/ncol(fun[[funInd]](x)))}
-        f<-function(x, sigma, beta, funInd){sigma*exp(beta*fun[[funInd]](x))}
-      } else{
-      f<-function(x, sigma, beta, funInd){sigma*exp(beta*fun[[funInd]](x))}
-      }
+      f<-function(x, sigma, beta, funInd){sigma*exp(beta*fun[[funInd]](x,df=class.df,times=class.object$times))}
+      
     }else if(model=="linear"){
       # Clim-lin function
-      if(constraint){
-      f<-function(x, sigma, beta, funInd){sigma+beta*fun[[funInd]](x)}
-      } else{
-      f<-function(x, sigma, beta, funInd){sigma+beta*fun[[funInd]](x)}
-      }
+      f<-function(x, sigma, beta, funInd){sigma+beta*fun[[funInd]](x,df=class.df,times=class.object$times)}
+     
     }
     
     # Loops over the edges
@@ -106,28 +138,26 @@ fit_t_general <- function(tree, data, fun, error=NULL, beta=NULL, sigma=NULL, mo
       
       # loop pour traverser les "maps"
       for(betaval in 1:indlength){
+          
         if(onestate){
-        regimenumber=1
+            regimenumber=1
         }else{
-        regimenumber <- which(colnames(phy$mapped.edge)==names(currentmap)[betaval])  # retrieve the regimes within maps
+            regimenumber <- which(colnames(phy$mapped.edge)==names(currentmap)[betaval])  # retrieve the regimes within maps
         }
-        if(constraint){
-            bet <- beta
-            sig <- sigma
-        }else{
-            bet<-beta[regimenumber]           # select the corresponding parameter for beta
-            sig<-sigma[regimenumber]          # select the corresponding parameter for
-        }
-        sigma
+
+        bet<-beta[regimenumber]           # select the corresponding parameter for beta
+        sig<-sigma[regimenumber]          # select the corresponding parameter for sigmz
         bl<-currentmap[[betaval]]         # branch length under the current map
         
         int <- try(integrate(f, lower=age, upper=(age + bl), subdivisions=500, rel.tol = .Machine$double.eps^0.05, sigma=sig, beta=bet, funInd=regimenumber), silent=TRUE)
-                        if(inherits(int ,'try-error')){
-                          warning("An error occured during numerical integration. The integral is probably divergent or your function is maybe undefined for some values")
-                          tempbeta <- NA_real_
-                        } else {
-                          tempbeta <- int$value
-                        }
+          
+           if(inherits(int ,'try-error')){
+             warning("An error occured during numerical integration. The integral is probably divergent or your function is maybe undefined for some values")
+             tempbeta <- NA_real_
+           } else {
+             tempbeta <- int$value
+           }
+          
         tempedge[betaval] <- tempbeta 
         # on met à jour age parcequ'on va passer au maps suivant pour la lignée i
         # update "age" because we're moving to the next map for lineage i.
@@ -140,7 +170,7 @@ fit_t_general <- function(tree, data, fun, error=NULL, beta=NULL, sigma=NULL, mo
     phy<-res
     
     if(!is.null(errorValue)){
-      phy$edge.length[index_error]<-phy$edge.length[index_error]+errorValue^2
+      phy$edge.length[index_error]<-phy$edge.length[index_error] + error_meas + errorValue^2
     }
     
     return(phy)
@@ -151,20 +181,47 @@ fit_t_general <- function(tree, data, fun, error=NULL, beta=NULL, sigma=NULL, mo
   clikCLIM <- function( param, dat, phylo, mtot, times, fun=fun, model, results=FALSE) {
     
     if(model=="exponential"){
-      beta<-param[seq_len(nbeta)]
-      sigma<-exp(param[nbeta+seq_len(nsigma)])
+       
+        # create vector of parameters
+        beta <- numeric(nstates)
+        sigma <- numeric(nstates)
+        
+        # assign values
+        beta[] <- c(param[seq_len(nbeta)])[index.user.beta]
+        sigma[] <- c(exp(param[nbeta+seq_len(nsigma)]))[index.user.sigma]
+        
+        # constrain some values to zero (should be only for beta as sigma=0 is undefined)
+        beta[is.na(beta)] <- 0
+        
       if(!is.null(error)) errorValue <- param[nbeta+nsigma+1] else errorValue <- NULL
       phylo <- BranchtransformMAPS(phylo, beta, mtot, times, fun, sigma, model, errorValue)
-      
+      if(any(is.na(phylo$edge.length)))  return(1000000)
       LL<-mvLL(phylo,dat,method="pic",param=list(estim=FALSE, sigma=1, check=FALSE))
       
     }else{
-      param <- (param)
-      beta<-param[seq_len(nbeta)]
-      sigma<-param[nbeta+seq_len(nsigma)]
+
+        # create vector of parameters
+        beta <- numeric(nstates)
+        sigma <- numeric(nstates)
+        
+        # assign values
+        beta[] <- c(param[seq_len(nbeta)])[index.user.beta]
+        sigma[] <- c(exp(param[nbeta+seq_len(nsigma)]))[index.user.sigma]
+        
+        # constrain some values to zero (should be only for beta as sigma=0 is undefined)
+        beta[is.na(beta)] <- 0
+        
       if(!is.null(error)) errorValue <- log(param[nbeta+nsigma+1]) else errorValue <- NULL
+      
+      # test=sigma+(beta*maxN)
+      # if(any(test<=0)){
+          #	LL<-list()
+        #	LL$logl<-Inf
+        #	}else{
+
       phylo <- BranchtransformMAPS(phylo, beta, mtot, times, fun, sigma, model, errorValue)
       
+      if(any(is.na(phylo$edge.length))) return(1000000) # instead of checking the parameter values as done previously, I return a high-likelihood value when there are NAs in the branch lengths. Note also that returning Inf value doesn't work with L-BFGS-B algorithm
       LL<-mvLL(phylo,dat,method="pic",param=list(estim=FALSE, sigma=1, check=FALSE))
       
     }
@@ -183,22 +240,54 @@ fit_t_general <- function(tree, data, fun, error=NULL, beta=NULL, sigma=NULL, mo
     estim<-spg(par=startval,fn=function(par){clikCLIM(param=par,dat=data,phy,mtot=mtot,times=times,fun=fun,model)},control=control ,method=3, lower=lower, upper=upper)
   }else if(method=="L-BFGS-B" | method=="Nelder-Mead"){
     estim<-optim(par=startval,fn=function(par){clikCLIM(param=par,dat=data,phy,mtot=mtot,times=times,fun=fun,model)},control=control, hessian=TRUE, method=method, lower=lower, upper=upper)
+    
   }else if(method=="fixed"){
     estim <- list()
-    estim$par <- c(beta,log(sigma))
+    estim$par <- param <- c(beta,log(sigma))
+    #estim$par <- c(beta, sigma)
     estim$value <- clikCLIM(param=estim$par,dat=data,phy,mtot=mtot,times=times,fun=fun,model)
     estim$convergence <- 0
+    
+    ## Return the tree --- just some modifications to the previous code to allow retrieving the tree
+    # create vector of parameters
+    beta <- numeric(nstates)
+    sigma <- numeric(nstates)
+    # assign values
+    beta[] <- c(param[seq_len(nbeta)])[index.user.beta]
+    sigma[] <- c(exp(param[nbeta+seq_len(nsigma)]))[index.user.sigma]
+    # constrain some values to zero (should be only for beta as sigma=0 is undefined)
+    beta[is.na(beta)] <- 0
     phyloTrans <- BranchtransformMAPS(phy, beta, mtot, times, fun, sigma, model, errorValue=NULL)
   }
   
   # Results
+  # Prepar the tables for the results
+  beta <- numeric(nstates)
+  sigma <- numeric(nstates)
+        
   if(model=="exponential"){
-    resultList<-matrix(c(estim$par[seq_len(nbeta)],exp(estim$par[nbeta+seq_len(nsigma)])),ncol=nbeta, byrow=T)
-    if(constraint==FALSE) colnames(resultList)<-c(colnames(tree$mapped.edge))
+      
+     # assign values
+     beta[] <- c(estim$par[seq_len(nbeta)])[index.user.beta]
+     sigma[] <- c(exp(estim$par[nbeta+seq_len(nsigma)]))[index.user.sigma]
+     # constrain some values to zero (should be only for beta as sigma=0 is undefined)
+     beta[is.na(beta)] <- 0
+      
+    resultList<-matrix(c(beta, sigma), ncol=nstates, byrow=T)
+    colnames(resultList)<-c(colnames(tree$mapped.edge))
     rownames(resultList)<-c("beta","sigma")
+      
   }else{
-    resultList<-matrix(estim$par[seq_len(nsigma+nbeta)],ncol=nbeta, byrow=T)
-    if(constraint==FALSE) colnames(resultList)<-c(colnames(tree$mapped.edge))
+      
+     # assign values
+     beta[] <- c(estim$par[seq_len(nbeta)])[index.user.beta]
+     sigma[] <- c(estim$par[nbeta+seq_len(nsigma)])[index.user.sigma]
+     
+     # constrain some values to zero (should be only for beta as sigma=0 is undefined)
+     beta[is.na(beta)] <- 0
+      
+    resultList<-matrix(c(beta, exp(sigma)), ncol=nstates, byrow=T)
+    colnames(resultList)<-c(colnames(tree$mapped.edge))
     rownames(resultList)<-c("beta","sigma")
   }
   
