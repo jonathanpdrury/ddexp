@@ -140,6 +140,10 @@ if(is.null(geo.map)&&is.null(subgroup.map)&&is.null(regime.map)){ 	# single slop
 		#trimclass.subgroup.trimmed<-trimSimmap(subgroup.trimmed,trim.class=subgroup)
 		trimclass.subgroup.trimmed<-trimSimmap(subgroup.map,trim.class=subgroup)
 		
+		#if(length(colnames(trimclass.subgroup.trimmed$mapped.edge))==1){ stop("only one guild in trimmed tree")}
+		#for now, returning flag
+		if(length(colnames(trimclass.subgroup.trimmed$mapped.edge))==1){ return("FLAG")}
+		
 		#create 'class object' for subsequent scripts
 		class.object<-try(CreateClassObject(trimclass.subgroup.trimmed))
 		
