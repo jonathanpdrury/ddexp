@@ -169,7 +169,7 @@ if(is.null(geo.map)&&is.null(subgroup.map)&&is.null(regime.map)){ 	# single slop
 			if(class(trimmed.class.object)=="try-error"){trimmed.class.object<-CreateClassObject(trimclass.subgroup.trimmed.tips,rnd=7)}
 
 			shifted.times<-trimmed.class.object$times+(subgroup.map.region.root-trimclass.subgroup.trimmed.tips.root)
-			new.subgroup.class.df.trimmed<-subgroup.class.df.trimmed[c(which(round(out$times,5)==round(min(shifted.times),5)):dim(subgroup.class.df.trimmed)[1]),]
+			new.subgroup.class.df.trimmed<-subgroup.class.df.trimmed[c(which(round(class.object$times,5)==round(min(shifted.times),5)):dim(subgroup.class.df.trimmed)[1]),]
 			
 			new.subgroup.class.df.trimmed$interval<-c(1:dim(new.subgroup.class.df.trimmed)[1])
 			class.object$times<-class.object$times[which(round(class.object$times,5)>=round(min(shifted.times),5))]-round(subgroup.map.region.root-trimclass.subgroup.trimmed.tips.root,5)
