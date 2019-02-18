@@ -134,11 +134,12 @@ if(is.null(geo.map)&&is.null(subgroup.map)&&is.null(regime.map)){ 	# single slop
 		if( is.null(subgroup) || (!subgroup%in%colnames(subgroup.map$mapped.edge))){ stop("specify a subgroup that appears as a mapped regime in subgroup.map")}
 
 		#trim subgroup simmap to species found in focal phylogeny
-		subgroup.trimmed<-drop.tip.simmap(subgroup.map,subgroup.map$tip.label[which(!subgroup.map$tip.label%in%phylo$tip.label)])
+		#subgroup.trimmed<-drop.tip.simmap(subgroup.map,subgroup.map$tip.label[which(!subgroup.map$tip.label%in%phylo$tip.label)])
 		
 		#trim this diet*region simmap to contain only branches in subgroup (see Drury et al. 2018 PLOS Biol for description of algorithm)
-		trimclass.subgroup.trimmed<-trimSimmap(subgroup.trimmed,trim.class=subgroup)
-
+		#trimclass.subgroup.trimmed<-trimSimmap(subgroup.trimmed,trim.class=subgroup)
+		trimclass.subgroup.trimmed<-trimSimmap(subgroup.map,trim.class=subgroup)
+		
 		#create 'class object' for subsequent scripts
 		class.object<-try(CreateClassObject(trimclass.subgroup.trimmed))
 		
@@ -198,17 +199,17 @@ if(is.null(geo.map)&&is.null(subgroup.map)&&is.null(regime.map)){ 	# single slop
 
 		#trim subgroup.map and regime.map to species found in focal phylogeny (i.e., a phylogeny trimmed to the taxa of interest)
 		
-		subgroup.simmap.trimmed<-drop.tip.simmap(subgroup.map,subgroup.map$tip.label[which(!subgroup.map$tip.label%in%phylo$tip.label)])
-
-		regime.simmap.trimmed<-drop.tip.simmap(regime.map,regime.map$tip.label[which(!regime.map$tip.label%in%phylo$tip.label)])
+		#subgroup.simmap.trimmed<-drop.tip.simmap(subgroup.map,subgroup.map$tip.label[which(!subgroup.map$tip.label%in%phylo$tip.label)])
+		#subgroup.simmap.trimmed<-trimSimmap(subgroup.map,trim.class=subgroup)
+		#regime.simmap.trimmed<-drop.tip.simmap(regime.map,regime.map$tip.label[which(!regime.map$tip.label%in%phylo$tip.label)])
 
 		##prepare simmap and fit DDexp to subgroup *regime
 
 		#need to build a class.df where diversity represents the number of species in a regime that are ALSO in the subgroup
 
-		class.by.class.object<-try(CreateClassbyClassObject_mvMORPH(map.guild=subgroup.simmap.trimmed,map.regime=regime.map,trim.class=subgroup))
-		if(class(class.by.class.object)=="try-error"){class.by.class.object<-try(CreateClassbyClassObject_mvMORPH(map.guild=subgroup.simmap.trimmed,map.regime=regime.map,trim.class=subgroup,rnd=6))}
-		if(class(class.by.class.object)=="try-error"){class.by.class.object<-CreateClassbyClassObject_mvMORPH(map.guild=subgroup.simmap.trimmed,map.regime=regime.map,trim.class=subgroup,rnd=7)}
+		class.by.class.object<-try(CreateClassbyClassObject_mvMORPH(map.guild=subgroup.map,map.regime=regime.map,trim.class=subgroup))
+		if(class(class.by.class.object)=="try-error"){class.by.class.object<-try(CreateClassbyClassObject_mvMORPH(map.guild=subgroup.map,map.regime=regime.map,trim.class=subgroup,rnd=6))}
+		if(class(class.by.class.object)=="try-error"){class.by.class.object<-CreateClassbyClassObject_mvMORPH(map.guild=subgroup.map,map.regime=regime.map,trim.class=subgroup,rnd=7)}
 		regime.class.df<-return.class.df_subgroup(class.by.class.object$regime.simmap,class.by.class.object$regime.class.object)
 
 		#set lineages not in "inv" subgroup to evolve via BM
