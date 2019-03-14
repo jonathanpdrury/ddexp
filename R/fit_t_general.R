@@ -6,11 +6,11 @@
 
 # Fit a model for which rates depends on a time-serie curve with regime specific parameters estimates.
 
-fit_t_general <- function(tree, data, fun, class.df, class.object, error=NULL, beta=NULL, sigma=NULL, model=c("exponential","linear"), method=c("L-BFGS-B","BB"), upper=Inf, lower=-Inf, control=list(maxit=20000), diagnostic=TRUE, echo=TRUE, constraint=NULL) {
+fit_t_general <- function(tree, data, fun, class.df, input.times, error=NULL, beta=NULL, sigma=NULL, model=c("exponential","linear"), method=c("L-BFGS-B","BB"), upper=Inf, lower=-Inf, control=list(maxit=20000), diagnostic=TRUE, echo=TRUE, constraint=NULL) {
   
   require(mvMORPH)
   if(!inherits(tree,"simmap")==TRUE) stop("For now only simmap-like mapped trees are allowed.","\n")
-  tree <- reorderSimmap(tree, order="postorder")
+  old.tree<-tree
   
   # Parameters
   if(!is.null(names(data))) data <- data[tree$tip.label]
@@ -20,20 +20,22 @@ fit_t_general <- function(tree, data, fun, class.df, class.object, error=NULL, b
   model=model[1]
   # Compute node time from the root to the tips
   times<-max(nodeHeights(tree))-nodeHeights(tree)[match(1:tree$Nnode+length(tree$tip),tree$edge[,1]),1]
+  
   names(times)<-1:tree$Nnode+length(tree$tip)
   # Set the root to zero
   times<-max(times)-times
   # Max time
   mtot=max(nodeHeights(tree))
   onestate<-ifelse(dim(tree$mapped.edge)[2]==1,TRUE,FALSE) 
-  
+
   # Number of species
   n=length(tree$tip.label)
   # Number of traits (for future versions)
   k=1
-  
+  tree <- reorderSimmap(tree, order="postorder")
+
     # Number of maps (selective regimes)
-    nstates <- ncol(tree$mapped.edge)
+    nstates <- dim(old.tree$mapped.edge)[2]
     if(is.null(constraint)){
            number_maps_beta <- number_maps_sigma <- nstates 
            index.user.sigma <- index.user.beta <- 1:number_maps_sigma
@@ -85,7 +87,7 @@ fit_t_general <- function(tree, data, fun, class.df, class.object, error=NULL, b
     beta=rep(0, number_maps_beta)
   }
   if(is.null(sigma)){
-    sigma=rep(sum(pic(data,tree)^2)/n, number_maps_sigma)
+    sigma=rep(sum(pic(data,old.tree)^2)/n, number_maps_sigma)
   }
   
   if(model=="linear"){
@@ -120,11 +122,11 @@ fit_t_general <- function(tree, data, fun, class.df, class.object, error=NULL, b
     
     if(model=="exponential"){  
       # because "times" assume that the root state is at 0 and funEnv is from the past to the present.
-      f<-function(x, sigma, beta, funInd){sigma*exp(beta*fun[[funInd]](x,df=class.df,times=class.object$times))}
+      f<-function(x, sigma, beta, funInd){sigma*exp(beta*fun[[funInd]](x,df=class.df,times=input.times))}
       
     }else if(model=="linear"){
       # Clim-lin function
-      f<-function(x, sigma, beta, funInd){sigma+beta*fun[[funInd]](x,df=class.df,times=class.object$times)}
+      f<-function(x, sigma, beta, funInd){sigma+beta*fun[[funInd]](x,df=class.df,times=input.times)}
      
     }
     

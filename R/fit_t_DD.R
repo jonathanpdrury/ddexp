@@ -33,47 +33,40 @@ if(is.null(geo.map)&&is.null(subgroup.map)&&is.null(regime.map)){ 	# single slop
 	
 		#check data format, names, and sorting
 		
-#		#convert phylo to simmap object
-#		hold<-rep("A",length(phylo$tip.label))
-#		hold[1]<-"B"
-#		names(hold)<-phylo$tip.label
-#		smap<-make.simmap(phylo,hold,message=F)
-#		new.maps<-list()
-#		for(i in 1:length(phylo$edge.length)){
-#			new.maps[[i]]<-phylo$edge.length[i]
-#			names(new.maps[[i]])<-"A"
-#			}
-#		new.mapped.edge<- as.matrix(rowSums(smap$mapped.edge))
-#		colnames(new.mapped.edge)<-"A"	
-#		smap$maps<-new.maps
-#		smap$mapped.edge<-new.mapped.edge
-#	
-#		nodeDist<-vector(mode = "numeric", length = smap$Nnode)
-#  		totlen<-length(smap$tip.label)
-#  		root <-totlen  + 1
-#  		heights<-nodeHeights(smap)
-#  		for (i in 1:dim(smap$edge)[1]){
-#    		nodeDist[[smap$edge[i, 1] - totlen]] <- heights[i]
-#		  }
-#		nodeDist<-c(nodeDist,max(heights))
-#		smap$times<-nodeDist
-#		
-#		#create function
-#		class.df<-return.class.df_sympatric(smap)
-#		new_list_function<-create.function.list_sympatric(smap,class.df)
-#		
-#		
-#		#fit model
-#		sigma.constraint<-rep(1, dim(smap$mapped.edge)[2])
-#		beta.constraint<-rep(1, dim(smap$mapped.edge)[2])
-#
-#		out<-fit_t_general(tree=smap,data=data,fun=new_list_function,error=error, sigma=sigma, beta=beta, model=model,method=method,maxN=maxN, upper=upper, lower=lower, control=control,diagnostic=diagnostic, echo=echo,constraint=list(sigma=sigma.constraint, beta=beta.constraint))
+		#convert phylo to simmap object
+		hold<-rep("A",length(phylo$tip.label))
+		hold[1]<-"B"
+		names(hold)<-phylo$tip.label
+		smap<-make.simmap(phylo,hold,message=F)
+		new.maps<-list()
+		for(i in 1:length(phylo$edge.length)){
+			new.maps[[i]]<-phylo$edge.length[i]
+			names(new.maps[[i]])<-"A"
+			}
+		new.mapped.edge<- as.matrix(rowSums(smap$mapped.edge))
+		colnames(new.mapped.edge)<-"A"	
+		smap$maps<-new.maps
+		smap$mapped.edge<-new.mapped.edge
+	
+		times = as.numeric(sort(max(branching.times(smap))-branching.times(smap)))
+		
+		#create function
+		class.df<-return.class.df_sympatric(smap)
+		new_list_function<-create.function.list(smap,times=times,df=class.df)
 
-# THIS isn't optimising correctly for some reason; could try to reactivate if optimisation issues are workedout otherwise:
+		#fit model
+		sigma.constraint<-rep(1, dim(smap$mapped.edge)[2])
+		beta.constraint<-rep(1, dim(smap$mapped.edge)[2])
 
-		#need to add other cases down the line
-		stop("not currently implemented; please use RPANDA::fit_t_comp")
+		if(model%in%c("exponential","linear")){
+			out<-fit_t_general(tree=smap,data=data,fun=new_list_function,class.df=class.df,input.times=times,error=error, sigma=sigma, beta=beta, model=model,method=method, upper=upper, lower=lower, control=control,diagnostic=diagnostic, echo=echo,constraint=list(sigma=sigma.constraint, beta=beta.constraint))	
+		} else {
+			out.exp<-fit_t_general(tree=smap,data=data,fun=new_list_function,class.df=class.df,input.times=times,error=error, sigma=sigma, beta=beta, model="exponential",method=method, upper=upper, lower=lower, control=control,diagnostic=diagnostic, echo=echo,constraint=list(sigma=sigma.constraint, beta=beta.constraint))	
+			out.lin<-fit_t_general(tree=smap,data=data,fun=new_list_function,class.df=class.df,input.times=times,error=error, sigma=sigma, beta=beta, model="linear",method=method, upper=upper, lower=lower, control=control,diagnostic=diagnostic, echo=echo,constraint=list(sigma=sigma.constraint, beta=beta.constraint))	
+			out<-list(exponential.fit=out.exp,linear.fit=out.lin)
+		}
 
+		
 }  else if (is.null(geo.map)&&is.null(subgroup.map)&&!is.null(regime.map)) { # two slope version without BioGeoBEARS biogeography or subgroup pruning
 
 		#first check that regime.map and phylo and data are concordant
@@ -94,10 +87,10 @@ if(is.null(geo.map)&&is.null(subgroup.map)&&is.null(regime.map)){ 	# single slop
 		beta.constraint<-seq(1,by=1,length.out=dim(regime.map$mapped.edge)[2])
 		
 		if(model%in%c("exponential","linear")){
-		out<-fit_t_general(tree=regime.map,data=data,fun=new_list_function,class.object=class.object,class.df=class.df,error=error, sigma=sigma, beta=beta, model=model,method=method, upper=upper, lower=lower, control=control,diagnostic=diagnostic, echo=echo,constraint=list(sigma=sigma.constraint, beta=beta.constraint))
+		out<-fit_t_general(tree=regime.map,data=data,fun=new_list_function,input.times=class.object$times,class.df=class.df,error=error, sigma=sigma, beta=beta, model=model,method=method, upper=upper, lower=lower, control=control,diagnostic=diagnostic, echo=echo,constraint=list(sigma=sigma.constraint, beta=beta.constraint))
 		} else{
-		out.exp=fit_t_general(tree=regime.map,data=data,fun=new_list_function,class.object=class.object,class.df=class.df,error=error, sigma=sigma, beta=beta, model="exponential",method=method, upper=upper, lower=lower, control=control,diagnostic=diagnostic, echo=echo,constraint=list(sigma=sigma.constraint, beta=beta.constraint))
-		out.lin=fit_t_general(tree=regime.map,data=data,fun=new_list_function,class.object=class.object,class.df=class.df,error=error, sigma=sigma, beta=beta, model="linear",method=method, upper=upper, lower=lower, control=control,diagnostic=diagnostic, echo=echo,constraint=list(sigma=sigma.constraint, beta=beta.constraint))
+		out.exp=fit_t_general(tree=regime.map,data=data,fun=new_list_function,input.times=class.object$times,class.df=class.df,error=error, sigma=sigma, beta=beta, model="exponential",method=method, upper=upper, lower=lower, control=control,diagnostic=diagnostic, echo=echo,constraint=list(sigma=sigma.constraint, beta=beta.constraint))
+		out.lin=fit_t_general(tree=regime.map,data=data,fun=new_list_function,input.times=class.object$times,class.df=class.df,error=error, sigma=sigma, beta=beta, model="linear",method=method, upper=upper, lower=lower, control=control,diagnostic=diagnostic, echo=echo,constraint=list(sigma=sigma.constraint, beta=beta.constraint))
 		out<-list(exponential.fit=out.exp,linear.fit=out.lin)
 		}
 		
@@ -114,10 +107,10 @@ if(is.null(geo.map)&&is.null(subgroup.map)&&is.null(regime.map)){ 	# single slop
 		beta.constraint<-rep(1, dim(geo.map$mapped.edge)[2])
 		
 		if(model%in%c("exponential","linear")){
-		out<-fit_t_general(tree=geo.map,data=data,fun=new_list_function,class.object=class.object,class.df=class.df,error=error, sigma=sigma, beta=beta, model=model,method=method, upper=upper, lower=lower, control=control,diagnostic=diagnostic, echo=echo,constraint=list(sigma=sigma.constraint, beta=beta.constraint))
+		out<-fit_t_general(tree=geo.map,data=data,fun=new_list_function,input.times=class.object$times,class.df=class.df,error=error, sigma=sigma, beta=beta, model=model,method=method, upper=upper, lower=lower, control=control,diagnostic=diagnostic, echo=echo,constraint=list(sigma=sigma.constraint, beta=beta.constraint))
 		} else{
-		out.exp<-fit_t_general(tree=geo.map,data=data,fun=new_list_function,class.object=class.object,class.df=class.df,error=error, sigma=sigma, beta=beta, model="exponential",method=method, upper=upper, lower=lower, control=control,diagnostic=diagnostic, echo=echo,constraint=list(sigma=sigma.constraint, beta=beta.constraint))
-		out.lin<-fit_t_general(tree=geo.map,data=data,fun=new_list_function,class.object=class.object,class.df=class.df,error=error, sigma=sigma, beta=beta, model="linear",method=method, upper=upper, lower=lower, control=control,diagnostic=diagnostic, echo=echo,constraint=list(sigma=sigma.constraint, beta=beta.constraint))
+		out.exp<-fit_t_general(tree=geo.map,data=data,fun=new_list_function,input.times=class.object$times,class.df=class.df,error=error, sigma=sigma, beta=beta, model="exponential",method=method, upper=upper, lower=lower, control=control,diagnostic=diagnostic, echo=echo,constraint=list(sigma=sigma.constraint, beta=beta.constraint))
+		out.lin<-fit_t_general(tree=geo.map,data=data,fun=new_list_function,input.times=class.object$times,class.df=class.df,error=error, sigma=sigma, beta=beta, model="linear",method=method, upper=upper, lower=lower, control=control,diagnostic=diagnostic, echo=echo,constraint=list(sigma=sigma.constraint, beta=beta.constraint))
 		out<-list(exponential.fit=out.exp,linear.fit=out.lin)
 		}
 		
@@ -189,10 +182,10 @@ if(is.null(geo.map)&&is.null(subgroup.map)&&is.null(regime.map)){ 	# single slop
 		beta.constraint[which(colnames(trimclass.subgroup.trimmed.tips$mapped.edge)==subgroup)]<-1
 		
 		if(model%in%c("exponential","linear")){
-		out<-fit_t_general(tree=trimclass.subgroup.trimmed.tips, data=data, fun=new_list_function,class.object=class.object,class.df=class.df,error=error, sigma=sigma, beta=beta, model=model,method=method, upper=upper, lower=lower, control=control,diagnostic=diagnostic, echo=echo,constraint=list(sigma=sigma.constraint, beta=beta.constraint))
+		out<-fit_t_general(tree=trimclass.subgroup.trimmed.tips, data=data, fun=new_list_function,input.times=class.object$times,class.df=class.df,error=error, sigma=sigma, beta=beta, model=model,method=method, upper=upper, lower=lower, control=control,diagnostic=diagnostic, echo=echo,constraint=list(sigma=sigma.constraint, beta=beta.constraint))
 		} else{
-		out.exp=fit_t_general(tree=trimclass.subgroup.trimmed.tips, data=data, fun=new_list_function,class.object=class.object,class.df=class.df,error=error, sigma=sigma, beta=beta, model="exponential",method=method, upper=upper, lower=lower, control=control,diagnostic=diagnostic, echo=echo,constraint=list(sigma=sigma.constraint, beta=beta.constraint))
-		out.lin=fit_t_general(tree=trimclass.subgroup.trimmed.tips, data=data, fun=new_list_function,class.object=class.object,class.df=class.df,error=error, sigma=sigma, beta=beta, model="linear",method=method, upper=upper, lower=lower, control=control,diagnostic=diagnostic, echo=echo,constraint=list(sigma=sigma.constraint, beta=beta.constraint))
+		out.exp=fit_t_general(tree=trimclass.subgroup.trimmed.tips, data=data, fun=new_list_function,input.times=class.object$times,class.df=class.df,error=error, sigma=sigma, beta=beta, model="exponential",method=method, upper=upper, lower=lower, control=control,diagnostic=diagnostic, echo=echo,constraint=list(sigma=sigma.constraint, beta=beta.constraint))
+		out.lin=fit_t_general(tree=trimclass.subgroup.trimmed.tips, data=data, fun=new_list_function,input.times=class.object$times,class.df=class.df,error=error, sigma=sigma, beta=beta, model="linear",method=method, upper=upper, lower=lower, control=control,diagnostic=diagnostic, echo=echo,constraint=list(sigma=sigma.constraint, beta=beta.constraint))
 		out<-list(exponential.fit=out.exp,linear.fit=out.lin)
 		}
 		
@@ -253,10 +246,10 @@ if(is.null(geo.map)&&is.null(subgroup.map)&&is.null(regime.map)){ 	# single slop
 		beta.constraint[which(colnames(regime.simmap.region.trimmed$mapped.edge)!="Z")]<-1:(dim(regime.simmap.region.trimmed$mapped.edge)[2]-1)
 		
 		if(model%in%c("exponential","linear")){
-		out<-fit_t_general(tree=regime.simmap.region.trimmed, data=data, fun=new_list_function,class.object=class.object,class.df=class.df,error=error, sigma=sigma, beta=beta, model=model,method=method, upper=upper, lower=lower, control=control,diagnostic=diagnostic, echo=echo,constraint=list(sigma=sigma.constraint, beta=beta.constraint))
+		out<-fit_t_general(tree=regime.simmap.region.trimmed, data=data, fun=new_list_function,input.times=class.object$times,class.df=class.df,error=error, sigma=sigma, beta=beta, model=model,method=method, upper=upper, lower=lower, control=control,diagnostic=diagnostic, echo=echo,constraint=list(sigma=sigma.constraint, beta=beta.constraint))
 		} else{
-		out.exp<-fit_t_general(tree=regime.simmap.region.trimmed, data=data, fun=new_list_function,class.object=class.object,class.df=class.df,error=error, sigma=sigma, beta=beta, model="exponential",method=method, upper=upper, lower=lower, control=control,diagnostic=diagnostic, echo=echo,constraint=list(sigma=sigma.constraint, beta=beta.constraint))
-		out.lin<-fit_t_general(tree=regime.simmap.region.trimmed, data=data, fun=new_list_function,class.object=class.object,class.df=class.df,error=error, sigma=sigma, beta=beta, model="linear",method=method, upper=upper, lower=lower, control=control,diagnostic=diagnostic, echo=echo,constraint=list(sigma=sigma.constraint, beta=beta.constraint))
+		out.exp<-fit_t_general(tree=regime.simmap.region.trimmed, data=data, fun=new_list_function,input.times=class.object$times,class.df=class.df,error=error, sigma=sigma, beta=beta, model="exponential",method=method, upper=upper, lower=lower, control=control,diagnostic=diagnostic, echo=echo,constraint=list(sigma=sigma.constraint, beta=beta.constraint))
+		out.lin<-fit_t_general(tree=regime.simmap.region.trimmed, data=data, fun=new_list_function,input.times=class.object$times,class.df=class.df,error=error, sigma=sigma, beta=beta, model="linear",method=method, upper=upper, lower=lower, control=control,diagnostic=diagnostic, echo=echo,constraint=list(sigma=sigma.constraint, beta=beta.constraint))
 		out<-list(exponential.fit=out.exp,linear.fit=out.lin)
 		}
 #######	

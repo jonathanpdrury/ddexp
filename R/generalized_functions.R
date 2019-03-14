@@ -92,7 +92,8 @@ create.function.list_sympatric<-function(simmap,class.df){
 		#cols=paste("c(",paste(which(grepl(paste(strsplit(st,split="")[[1]],collapse="|"),states))+1,collapse=","),")",sep="") #this gives the columns to extract from class.df
 		#eval(parse(text=paste("funlist[[",i,"]]<-function(x){;values <- simmap$times;res <- findInterval(x, values);index <- res==0;res[index==TRUE] <- 1;return(as.matrix(geo.class.df[res,",cols,"]));}",sep="")))
 		#eval(parse(text=paste("funlist[[",i,"]]<-function(x){;values <- ",deparse(substitute(geo.class.object)),"$times;res <- findInterval(x, values);index <- res==0;res[index==TRUE] <- 1;return(as.matrix(",deparse(substitute(geo.class.df)),"[res,",cols,"]));}",sep="")))
-		eval(parse(text=paste("funlist[[",i,"]]<-function(x){;values <- ",deparse(substitute(simmap)),"$times;res <- findInterval(x, values);index <- res==0;res[index==TRUE] <- 1;return(",deparse(substitute(class.df)),"[res,",i+1,"]);}",sep="")))
+		eval(parse(text=paste("funlist[[",i,"]]<-function(x)		 {;values <- ",deparse(substitute(simmap)),"$times;res <- findInterval(x, values);index <- res==0;res[index==TRUE] <- 1;return(",deparse(substitute(class.df)),"[res,",i+1,"]);}",sep="")))
+		eval(parse(text=paste("funlist[[",i,"]]<-function(x,df,times){;values <- times;								   res <- findInterval(x, values);index <- res==0;res[index==TRUE] <- 1;return(df[res,",i+1,"]);}",sep="")))
 		}
 			
 	return(funlist)
