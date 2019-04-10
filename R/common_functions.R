@@ -1,8 +1,9 @@
 ## multiple models
 # mserr is expected to be the standard error of the mean for each species. Otherwise assumed to be zero.
 
-fit_t_standard <- function(tree, data, model=c("BM1","BMM","OU1","OUM"), mserr=0, nuisance=TRUE, method="Nelder-Mead", start_val=NULL, echo=TRUE, ...){
+fit_t_standard <- function(tree, data, model=c("BM1","BMM","OU1","OUM","EB"), mserr=0, nuisance=TRUE, method="Nelder-Mead", start_val=NULL, echo=TRUE, ...){
   require(mvMORPH)
+  require(geiger)
     
   model = match.arg(model)[1]
   args = list(...)
@@ -10,7 +11,7 @@ fit_t_standard <- function(tree, data, model=c("BM1","BMM","OU1","OUM"), mserr=0
     if(is.null(args[["lower"]])) lower <- -Inf else lower <- args$lower
     if(is.null(args[["fixedRoot"]])) fixedRoot <- TRUE else fixedRoot <- FALSE
     
-  if(!inherits(tree,"simmap")==TRUE & model!="BM1" & model!="OU1") stop("For now only simmap-like mapped trees are allowed with BMM and OUM.","\n")
+  if(!inherits(tree,"simmap")==TRUE & model!="BM1" & model!="OU1" & model!="EB") stop("For now only simmap-like mapped trees are allowed with BMM and OUM.","\n")
     else if(inherits(tree,"simmap")==TRUE) tree <- reorderSimmap(tree, order="postorder")
         else tree <- reorder(tree, order="postorder")
     
@@ -64,7 +65,14 @@ fit_t_standard <- function(tree, data, model=c("BM1","BMM","OU1","OUM"), mserr=0
             err <- 0.05*sig_est
             sig2 <- (1 - 0.05)*sig_est
             start_val <- log(c(sig2, hlife, err))
-        })
+        },
+        "EB"={
+            err <- 0.05*sig_est
+            sig2 <- (1 - 0.05)*sig_est
+            slope <- 0
+            start_val <- c(log(sig2),slope,log(err))
+            }
+        )
      if(nuisance==FALSE) start_val = start_val[-length(start_val)]
     }
     
@@ -170,6 +178,23 @@ fit_t_standard <- function(tree, data, model=c("BM1","BMM","OU1","OUM"), mserr=0
                   
                   # ll computation
                   llik <- mvLL(V, data, method="rpf", param=list(D=W))
+              },
+              "EB"={
+              	
+              	sigma2=exp(par[1])
+              	rate=-abs(par[2])
+              	
+              	phy_temp = rescale(phy,model="EB",a=rate,sigsq=sigma2)
+              	if(!is.null(error) & nuisance==TRUE){
+                          nuisance = exp(par[3])
+                          phy_temp$edge.length[index_error]<-phy_temp$edge.length[index_error]+ error^2 + nuisance
+                      }else{
+                          phy_temp$edge.length[index_error]<-phy_temp$edge.length[index_error]+ error^2
+                      }
+                  
+                  # ll computation
+                  llik <- mvLL(phy_temp, data, method="pic", param=list(estim=FALSE, sigma=1, check=TRUE)) 
+              	
               })
         
         return(llik)
@@ -196,14 +221,16 @@ fit_t_standard <- function(tree, data, model=c("BM1","BMM","OU1","OUM"), mserr=0
           "BMM"={names(param)=c(rep("sigma2", regimes),"nuisance")},
           "OU1"={names(param)=c("sigma2","alpha","nuisance")},
           "OUM"={names(param)=c("sigma2","alpha","nuisance")
-                names(theta)=colnames(tree$mapped.edge)}) 
+                names(theta)=colnames(tree$mapped.edge)},
+           "EB"={names(param)=c("sigma2", "slope","nuisance")}) 
         }else{
     switch(model,
            "BM1"={names(param)=c("sigma2")},
           "BMM"={names(param)=rep("sigma2", regimes)},
           "OU1"={names(param)=c("sigma2","alpha")},
           "OUM"={names(param)=c("sigma2","alpha")
-                names(theta)=colnames(tree$mapped.edge)})  
+                names(theta)=colnames(tree$mapped.edge)},
+           "EB"={names(param)=c("sigma2", "slope")})  
     }
     
     LL = -estimModel$value
