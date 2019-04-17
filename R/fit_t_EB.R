@@ -25,11 +25,11 @@
 #--can 'phylo' be removed completely and just inferred based on maps that are passed?
 #--for biogeography case, return modified results matrix
 
-fit_t_DD<-function(phylo,data,model=c("exponential","linear","both"),regime.map=NULL,error=NULL, beta=NULL, sigma=NULL, method=c("Nelder-Mead","L-BFGS-B","BB"), upper=Inf, lower=-Inf, control=list(maxit=20000), diagnostic=FALSE, echo=FALSE){
+fit_t_EB<-function(phylo,data,model=c("exponential","linear","both"),regime.map=NULL,error=NULL, beta=NULL, sigma=NULL, method=c("L-BFGS-B","BB","Nelder-Mead"), upper=list(beta=0,sigma=Inf), lower=-Inf, control=list(maxit=20000), diagnostic=FALSE, echo=FALSE){
 	
 	if(!model%in%c("exponential","linear","both")){ stop("model must be stated as 'exponential' , 'linear', or 'both' ")}
 	
-if(is.null(regime.map)){ 	# single slope version without BioGeoBEARS biogeography or subgroup pruning
+if(is.null(regime.map)){ 	# single slope version 
 	
 		#check data format, names, and sorting
 		
@@ -47,19 +47,16 @@ if(is.null(regime.map)){ 	# single slope version without BioGeoBEARS biogeograph
 		colnames(new.mapped.edge)<-"A"	
 		smap$maps<-new.maps
 		smap$mapped.edge<-new.mapped.edge
-	
-		times = as.numeric(sort(max(branching.times(smap))-branching.times(smap)))
 		
 		#create function
-		class.df<-return.class.df_sympatric(smap)
-		new_list_function<-create.function.list(smap,times=times,df=class.df)
+		new_list_function<-create.function.list.EB1(smap)
 
 		#fit model
 		sigma.constraint<-rep(1, dim(smap$mapped.edge)[2])
 		beta.constraint<-rep(1, dim(smap$mapped.edge)[2])
 
 		if(model%in%c("exponential","linear")){
-			out<-fit_t_general(tree=smap,data=data,fun=new_list_function,class.df=class.df,input.times=times,error=error, sigma=sigma, beta=beta, model=model,method=method, upper=upper, lower=lower, control=control,diagnostic=diagnostic, echo=echo,constraint=list(sigma=sigma.constraint, beta=beta.constraint))	
+			out<-fit_t_general(tree=smap,data=data,fun=new_list_function,class.df=NULL,input.times=NULL,error=error, sigma=sigma, beta=beta, model=model,method=method, upper=upper, lower=lower, control=control,diagnostic=diagnostic, echo=echo,constraint=list(sigma=sigma.constraint, beta=beta.constraint))	
 		} else {
 			out.exp<-fit_t_general(tree=smap,data=data,fun=new_list_function,class.df=class.df,input.times=times,error=error, sigma=sigma, beta=beta, model="exponential",method=method, upper=upper, lower=lower, control=control,diagnostic=diagnostic, echo=echo,constraint=list(sigma=sigma.constraint, beta=beta.constraint))	
 			out.lin<-fit_t_general(tree=smap,data=data,fun=new_list_function,class.df=class.df,input.times=times,error=error, sigma=sigma, beta=beta, model="linear",method=method, upper=upper, lower=lower, control=control,diagnostic=diagnostic, echo=echo,constraint=list(sigma=sigma.constraint, beta=beta.constraint))	
@@ -67,7 +64,7 @@ if(is.null(regime.map)){ 	# single slope version without BioGeoBEARS biogeograph
 		}
 
 		
-}  else if (!is.null(regime.map)) { # two slope version without BioGeoBEARS biogeography or subgroup pruning
+}  else if (!is.null(regime.map)) { # multi-slope version where rates are reset to root state at beginning of new regime
 
 		#first check that regime.map and phylo and data are concordant
 		if(!all(as.phylo(phylo)$tip.label == as.phylo(regime.map)$tip.label)) { stop("regime map doesn't match phylogeny")}
@@ -75,22 +72,18 @@ if(is.null(regime.map)){ 	# single slope version without BioGeoBEARS biogeograph
 		if(! all (names(data) %in% as.phylo(regime.map)$tip.label)) { stop("names of lineages in data and regime map don't match")}
 		if(! all (as.phylo(regime.map)$tip.label %in% names(data)) ) { stop("names of lineages in data and regime map don't match")}
 		
-		class.object<-try(CreateClassObject(regime.map))
-		if(class(class.object)=="try-error"){class.object<-try(CreateClassObject(regime.map,rnd=6))}
-		if(class(class.object)=="try-error"){class.object<-CreateClassObject(regime.map,rnd=7)}
-
-		class.df<-return.class.df_subgroup(regime.map,class.object)
-		new_list_function<-create.function.list(regime.map,times=class.object$times,df=class.df)
+		
+		new_list_function<-create.function.list.EBmulti(regime.map)
 				
 		#fit model
 		sigma.constraint<-rep(1, dim(regime.map$mapped.edge)[2])
 		beta.constraint<-seq(1,by=1,length.out=dim(regime.map$mapped.edge)[2])
 		
 		if(model%in%c("exponential","linear")){
-		out<-fit_t_general(tree=regime.map,data=data,fun=new_list_function,input.times=class.object$times,class.df=class.df,error=error, sigma=sigma, beta=beta, model=model,method=method, upper=upper, lower=lower, control=control,diagnostic=diagnostic, echo=echo,constraint=list(sigma=sigma.constraint, beta=beta.constraint))
+		out<-fit_t_general(tree=regime.map,data=data,fun=new_list_function,input.times=NULL,class.df=NULL,error=error, sigma=sigma, beta=beta, model=model,method=method, upper=upper, lower=lower, control=control,diagnostic=diagnostic, echo=echo,constraint=list(sigma=sigma.constraint, beta=beta.constraint))
 		} else{
-		out.exp=fit_t_general(tree=regime.map,data=data,fun=new_list_function,input.times=class.object$times,class.df=class.df,error=error, sigma=sigma, beta=beta, model="exponential",method=method, upper=upper, lower=lower, control=control,diagnostic=diagnostic, echo=echo,constraint=list(sigma=sigma.constraint, beta=beta.constraint))
-		out.lin=fit_t_general(tree=regime.map,data=data,fun=new_list_function,input.times=class.object$times,class.df=class.df,error=error, sigma=sigma, beta=beta, model="linear",method=method, upper=upper, lower=lower, control=control,diagnostic=diagnostic, echo=echo,constraint=list(sigma=sigma.constraint, beta=beta.constraint))
+		out.exp=fit_t_general(tree=regime.map,data=data,fun=new_list_function,input.times=NULL,class.df=NULL,error=error, sigma=sigma, beta=beta, model="exponential",method=method, upper=upper, lower=lower, control=control,diagnostic=diagnostic, echo=echo,constraint=list(sigma=sigma.constraint, beta=beta.constraint))
+		out.lin=fit_t_general(tree=regime.map,data=data,fun=new_list_function,input.times=NULL,class.df=NULL,error=error, sigma=sigma, beta=beta, model="linear",method=method, upper=upper, lower=lower, control=control,diagnostic=diagnostic, echo=echo,constraint=list(sigma=sigma.constraint, beta=beta.constraint))
 		out<-list(exponential.fit=out.exp,linear.fit=out.lin)
 		}
 		

@@ -80,6 +80,39 @@ create.function.list<-function(geo.simmap,df, times){
 
 }
 
+create.function.list.EB1<-function(geo.simmap){
+	if(is.null(geo.simmap)){stop('provide geo.simmap')}
+	states<-colnames(geo.simmap$mapped.edge)
+	funlist<-list()	
+	for(i in 1:length(states)){
+		eval(parse(text=paste0("funlist[[",i,"]]<-function(x,df,times){;return(x);}")))
+		}
+			
+	return(funlist)
+
+}
+
+create.function.list.EBmulti<-function(regime.simmap){
+	if(is.null(regime.simmap)){stop('provide regime.simmap')}
+	states<-colnames(regime.simmap$mapped.edge)
+	class.object<-try(CreateClassObject(regime.simmap))
+	if(class(class.object)=="try-error"){class.object<-try(CreateClassObject(regime.simmap,rnd=6))}
+	if(class(class.object)=="try-error"){class.object<-CreateClassObject(regime.simmap,rnd=7)}
+	
+	funlist<-list()	
+	for(i in 1:length(states)){
+		first.time.bin=min(which(lapply(class.object$class.object,function(x) states[i]%in%x[,2])==TRUE))
+		if(first.time.bin==1){ #if state is present at the root
+		eval(parse(text=paste0("funlist[[",i,"]]<-function(x,df,times){;return(x);}")))
+		} else {
+		time.since.root = class.object$times[first.time.bin]
+		eval(parse(text=paste0("funlist[[",i,"]]<-function(x,df,times){;return(x-",time.since.root,");}")))
+		}
+		}
+			
+	return(funlist)
+
+}
 
 create.function.list_sympatric<-function(simmap,class.df){
 	if(is.null(class.df)){stop('provide class.df')}
