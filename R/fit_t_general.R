@@ -6,7 +6,7 @@
 
 # Fit a model for which rates depends on a time-serie curve with regime specific parameters estimates.
 
-fit_t_general <- function(tree, data, fun, class.df, input.times, error=NULL, beta=NULL, sigma=NULL, model=c("exponential","linear"), method=c("L-BFGS-B","BB"), upper=Inf, lower=-Inf, control=list(maxit=20000), diagnostic=TRUE, echo=TRUE, constraint=NULL) {
+fit_t_general <- function(tree, data, fun, class.df, input.times, error=NULL, beta=NULL, sigma=NULL, model=c("exponential","linear"), method=c("L-BFGS-B","BB"), upper=Inf, lower=-Inf, control=list(maxit=20000), diagnostic=TRUE, echo=TRUE, constraint=NULL, return.tree=TRUE) {
   
   require(mvMORPH)
   if(!inherits(tree,"simmap")==TRUE) stop("For now only simmap-like mapped trees are allowed.","\n")
@@ -180,7 +180,7 @@ fit_t_general <- function(tree, data, fun, class.df, input.times, error=NULL, be
   
   
   ##---------------------------------------------------------------------------------##
-  clikCLIM <- function( param, dat, phylo, mtot, times, fun=fun, model, results=FALSE) {
+  clikCLIM <- function( param, dat, phylo, mtot, times, fun=fun, model, results=FALSE, return.tree=FALSE) {
     
     if(model=="exponential"){
        
@@ -197,6 +197,7 @@ fit_t_general <- function(tree, data, fun, class.df, input.times, error=NULL, be
         
       if(!is.null(error)) errorValue <- param[nbeta+nsigma+1] else errorValue <- NULL
       phylo <- BranchtransformMAPS(phylo, beta, mtot, times, fun, sigma, model, errorValue)
+      if(return.tree){ return(phylo)}
       if(any(is.na(phylo$edge.length)))  return(1000000)
       LL<-mvLL(phylo,dat,method="pic",param=list(estim=FALSE, sigma=1, check=FALSE))
       
@@ -222,7 +223,7 @@ fit_t_general <- function(tree, data, fun, class.df, input.times, error=NULL, be
         #	}else{
 
       phylo <- BranchtransformMAPS(phylo, beta, mtot, times, fun, sigma, model, errorValue)
-      
+      if(return.tree){ return(phylo)}
       if(any(is.na(phylo$edge.length))) return(1000000) # instead of checking the parameter values as done previously, I return a high-likelihood value when there are NAs in the branch lengths. Note also that returning Inf value doesn't work with L-BFGS-B algorithm
       LL<-mvLL(phylo,dat,method="pic",param=list(estim=FALSE, sigma=1, check=FALSE))
       
@@ -312,6 +313,10 @@ fit_t_general <- function(tree, data, fun, class.df, input.times, error=NULL, be
   #ancestral states estimates
   anc<-clikCLIM(param=estim$par, dat=data, phy, mtot, times, fun=fun, model, results=TRUE)$mu
   
+  if(return.tree){
+  transformed.phylo.ML<-clikCLIM(param=estim$par, dat=data, phy, mtot, times, fun=fun, model, results=TRUE,return.tree=TRUE)
+  }
+  
   ##---------------------Diagnostics--------------------------------------------##
   
   if(estim$convergence==0 & diagnostic==TRUE){
@@ -366,7 +371,11 @@ fit_t_general <- function(tree, data, fun, class.df, input.times, error=NULL, be
     }
   }
   
+  if(return.tree){
+  results<-list(LogLik=LL, AIC=AIC, AICc=AICc, rates=resultList, anc=anc, convergence=estim$convergence, hess.values=hess.value, error=errorValue, param=estim$par, phyloTrans=transformed.phylo.ML)
+  } else{
   results<-list(LogLik=LL, AIC=AIC, AICc=AICc, rates=resultList, anc=anc, convergence=estim$convergence, hess.values=hess.value, error=errorValue, param=estim$par, phyloTrans=phyloTrans)
+	}
 }
 
 
