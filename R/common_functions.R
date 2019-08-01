@@ -206,14 +206,21 @@ fit_t_standard <- function(tree, data, model=c("BM1","BMM","OU1","OUM","EB"), ms
                         fn = function(par) -llik(par, phy=tree, data=data, model=model, error=mserr)$logl,
                         method=method,
                         upper=upper,
-                        lower=lower)
+                        lower=lower,
+                        control=list(maxit=2000)
+                        )
     
     # ancestral states/optimums
     if(echo==TRUE) message("Done. retrieve parameters and results...")
     theta <- as.numeric(llik(estimModel$par, phy=tree, data=data, model=model, error=mserr)$theta)
     
     # param
+    if(model=="EB"){
+    	param = exp(estimModel$par)
+    	param[2] = -abs(log(param[2]))
+    } else {
     param = exp(estimModel$par)
+    }
     
     if(nuisance){
     switch(model,

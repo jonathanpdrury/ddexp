@@ -1,0 +1,1185 @@
+t<-drop.tip(phylo,phylo$tip.label[which(!phylo$tip.label%in%unique(c(as.character(data$sp1.treename),as.character(data$sp2.treename))))]) #write this to drop tips that aren't in the dataset
+phylo<-read.tree("~/Dropbox/LMC2 MS/PLMMs/het.ultrametric.tree")
+t<-drop.tip(phylo,phylo$tip.label[which(!phylo$tip.label%in%unique(c(as.character(data$sp1.treename),as.character(data$sp2.treename))))]) #write this to drop tips that aren't in the dataset
+t
+phylo
+#adds an arbitrary lineage as an outgroup#
+t2<-add.outgroup(t) #this forces root to have a node ID, which it wouldn't otherwise--this is important because some species pairs might share a MRCA at the root
+source('~/Dropbox/IT Project II/MISC/plmm_functions.R')
+#adds an arbitrary lineage as an outgroup#
+t2<-add.outgroup(t) #this forces root to have a node ID, which it wouldn't otherwise--this is important because some species pairs might share a MRCA at the root
+#convert that phylogeny into a pedigree object for animal modeling#
+t3<-makeNodeLabel(t2)
+INphylo<-inverseA(t3,nodes="ALL")#
+save(INphylo,file="INphylo.RData")
+animal<-vector()#
+for(k in 1:dim(data)[1]){#
+	sp1.treename.node<-INphylo$pedigree[match(data$sp1.treename[k],INphylo$pedigree[,1]),2]#
+	sp1.treename.node.list<-c(sp1.treename.node)#
+	while(!is.na(sp1.treename.node)){#
+		sp1.treename.node<-INphylo$pedigree[match(sp1.treename.node,INphylo$pedigree[,1]),2]#
+		sp1.treename.node.list<-c(sp1.treename.node.list,sp1.treename.node)#
+		}#
+	sp2.treename.node<-INphylo$pedigree[match(data$sp2.treename[k],INphylo$pedigree[,1]),2]#
+	sp2.treename.node.list<-c(sp2.treename.node)#
+	while(!is.na(sp2.treename.node)){#
+		sp2.treename.node<-INphylo$pedigree[match(sp2.treename.node,INphylo$pedigree[,1]),2]#
+		sp2.treename.node.list<-c(sp2.treename.node.list,sp2.treename.node)#
+		}#
+	animal<-c(animal,intersect(sp1.treename.node.list,sp2.treename.node.list)[1])	##the first element in common of sp1.treename.node.list and sp2.treename.node.list is their mrca	#
+	}#
+data$animal<-animal
+data$animal
+head(data)
+lineages<-as.matrix(data.frame(data$THolderSp,data$TetMaleSp))
+lineages
+lineages.sorted<-random.effect.sorting(lineages,counter.max=1e6)
+lineages.sorted
+save(lineages.sorted,file="lineages.sorted.RData")
+#this next block translates the AOU codes back into species names as they appear in the tree and stores them in the sorted order#
+species1<-vector()#
+for(i in 1:length(lineages.sorted$sorted.data[,1])){#
+	if(lineages.sorted$sorted.data[i,1]%in%data$data.THolderSp){#
+		species1<-c(species1,as.character(data$sp1.treename[which(data$data.THolderSp==lineages.sorted$sorted.data[i,1])][1]))#
+		} else {#
+		species1<-c(species1,as.character(data$sp2.treename[which(data$data.TetMaleSp==lineages.sorted$sorted.data[i,1])][1]))#
+		}#
+	}	#
+species2<-vector()#
+for(i in 1:length(lineages.sorted$sorted.data[,2])){#
+	if(lineages.sorted$sorted.data[i,2]%in%data$data.THolderSp){#
+		species2<-c(species2,as.character(data$sp1.treename[which(data$data.THolderSp==lineages.sorted$sorted.data[i,2])][1]))#
+		} else {#
+		species2<-c(species2,as.character(data$sp2.treename[which(data$data.TetMaleSp==lineages.sorted$sorted.data[i,2])][1]))#
+		}#
+	}	#
+data$species1<-species1 #match up sorted AOU number to species name#
+data$species2<-species2 #match up sorted AOU number to species name
+data$species1
+#this next block translates the AOU codes back into species names as they appear in the tree and stores them in the sorted order#
+species1<-vector()#
+for(i in 1:length(lineages.sorted$sorted.data[,1])){#
+	if(lineages.sorted$sorted.data[i,1]%in%data$THolderSp){#
+		species1<-c(species1,as.character(data$sp1.treename[which(data$THolderSp==lineages.sorted$sorted.data[i,1])][1]))#
+		} else {#
+		species1<-c(species1,as.character(data$sp2.treename[which(data$TetMaleSp==lineages.sorted$sorted.data[i,1])][1]))#
+		}#
+	}	#
+species2<-vector()#
+for(i in 1:length(lineages.sorted$sorted.data[,2])){#
+	if(lineages.sorted$sorted.data[i,2]%in%data$THolderSp){#
+		species2<-c(species2,as.character(data$sp1.treename[which(data$THolderSp==lineages.sorted$sorted.data[i,2])][1]))#
+		} else {#
+		species2<-c(species2,as.character(data$sp2.treename[which(data$TetMaleSp==lineages.sorted$sorted.data[i,2])][1]))#
+		}#
+	}	#
+data$species1<-species1 #match up sorted AOU number to species name#
+data$species2<-species2 #match up sorted AOU number to species name
+data$species1
+data$species2
+head(data)
+?MCMCglmm()
+m1<-MCMCglmm(PrChasing.mean.ratio_no.min ~ mean.Hmean.hrpr, random = ~animal + species1 + species2 + Site, data=data, family = "gaussian", ginverse = list(animal = INphylo$Ainv),prior=prior,nitt=2000000,burnin=20000,thin=1000,verbose=TRUE)
+prior<-list(G=list(G1=list(V=1,nu=0.002),G2=list(V=1,nu=0.002),G3=list(V=1,nu=0.002),G4=list(V=1,nu=0.002)),R=list(V=1,nu=0.02))
+m1<-MCMCglmm(PrChasing.mean.ratio_no.min ~ mean.Hmean.hrpr, random = ~animal + species1 + species2 + Site, data=data, family = "gaussian", ginverse = list(animal = INphylo$Ainv),prior=prior,nitt=2000000,burnin=20000,thin=1000,verbose=TRUE)
+summary(m1)
+m1a<-m1
+save(m1a,file="m1a.RData")
+plot(m1a)
+m2a<-MCMCglmm(Attack.rate.mean.ratio_no.min ~ mean.Hmean.hrpr, random = ~animal + species1 + species2 + Site, data=data, family = "gaussian", ginverse = list(animal = INphylo$Ainv),prior=prior,nitt=2000000,burnin=20000,thin=1000,verbose=TRUE)
+summary(m2a)
+plot(m2a)
+save(m2a,file="m2a.RData")
+range(data$Attack.rate.mean.ratio_no.min)
+range(data$PrChasing.mean.ratio_no.min)
+data$chase.threshold<-ifelse(data$PrChasing.mean.ratio_no.min>0.5,1,0)#
+data$attack.threshold<-ifelse(data$Attack.rate.mean.ratio_no.min>0.5,1,0)
+m1b<-MCMCglmm(factor(chase.threshold) ~ mean.Hmean.hrpr, random = ~animal + species1 + species2 + Site, data=data, family = "categorical", ginverse = list(animal = INphylo$Ainv),prior=prior,nitt=2000000,burnin=20000,thin=1000,verbose=TRUE,slice=TRUE)
+summary(m1b)
+save(m1b,file="m1b.RData")
+m2b<-MCMCglmm(factor(attack.threshold) ~ mean.Hmean.hrpr, random = ~animal + species1 + species2 + Site, data=data, family = "categorical", ginverse = list(animal = INphylo$Ainv),prior=prior,nitt=2000000,burnin=20000,thin=1000,verbose=TRUE,slice=TRUE)#
+save(m2b,file="m2b.RData")
+summary(m2b)
+plot(m2b)
+write.csv(data,file="LMC_data_for_PLMMs.csv")
+fam<-read.csv("~/Dropbox/Temperate:Tropical/analyses/family_level_analyses/MASTER_family_fits.csv")
+dim(fam)
+23701/7
+colnames(Fam)
+colnames(fam)
+head(fam)
+unique(interaction(fam$family,fam$tree.no))
+unique(fam$family)
+2019-1859
+?MCMCglmm()
+vignette("Overview", "MCMCglmm")
+load('~/Dropbox/LMC2 MS/PLMMs/PLMM pops with stable predictions including pa.pooled/m1a.RData')
+summary(m1a)
+load('~/Dropbox/LMC2 MS/PLMMs/PLMM pops with stable predictions including pa.pooled/m1b.RData')#
+load('~/Dropbox/LMC2 MS/PLMMs/PLMM pops with stable predictions including pa.pooled/m2a.RData')#
+load('~/Dropbox/LMC2 MS/PLMMs/PLMM pops with stable predictions including pa.pooled/m2b.RData')
+summary(m1v)
+summary(m1b)
+plot(m1v)
+plot(m1b)
+plot(m1a)
+summary(m1a)
+plot(m2b)
+require(maps)
+require(maptools)
+map("world")
+##see files in AmNat MS for details on how tree was constructed#
+#
+require(ape)#
+require(phytools)#
+require(MCMCglmm)#
+phylo<-read.tree("~/Dropbox/LMC2 MS/PLMMs/het.ultrametric.tree")#
+data<-read.csv("~/Dropbox/LMC2 MS/PLMMs/Observed_and_predicted_1000y_Hmeans.csv")#
+#
+source('~/Dropbox/IT Project II/MISC/plmm_functions.R')#
+t<-drop.tip(phylo,phylo$tip.label[which(!phylo$tip.label%in%unique(c(as.character(data$sp1.treename),as.character(data$sp2.treename))))]) #write this to drop tips that aren't in the dataset#
+#
+#adds an arbitrary lineage as an outgroup#
+t2<-add.outgroup(t) #this forces root to have a node ID, which it wouldn't otherwise--this is important because some species pairs might share a MRCA at the root#
+#
+#convert that phylogeny into a pedigree object for animal modeling#
+t3<-makeNodeLabel(t2)#
+INphylo<-inverseA(t3,nodes="ALL")#
+save(INphylo,file="INphylo.RData")#
+#
+#define 'animal' (i.e., a string designating the node name connecting two species) and add it directly to dataset. here,code is taken from Drury et al 2018, Syst Biol:#
+animal<-vector()#
+for(k in 1:dim(data)[1]){#
+	sp1.treename.node<-INphylo$pedigree[match(data$sp1.treename[k],INphylo$pedigree[,1]),2]#
+	sp1.treename.node.list<-c(sp1.treename.node)#
+	while(!is.na(sp1.treename.node)){#
+		sp1.treename.node<-INphylo$pedigree[match(sp1.treename.node,INphylo$pedigree[,1]),2]#
+		sp1.treename.node.list<-c(sp1.treename.node.list,sp1.treename.node)#
+		}#
+	sp2.treename.node<-INphylo$pedigree[match(data$sp2.treename[k],INphylo$pedigree[,1]),2]#
+	sp2.treename.node.list<-c(sp2.treename.node)#
+	while(!is.na(sp2.treename.node)){#
+		sp2.treename.node<-INphylo$pedigree[match(sp2.treename.node,INphylo$pedigree[,1]),2]#
+		sp2.treename.node.list<-c(sp2.treename.node.list,sp2.treename.node)#
+		}#
+	animal<-c(animal,intersect(sp1.treename.node.list,sp2.treename.node.list)[1])	##the first element in common of sp1.treename.node.list and sp2.treename.node.list is their mrca	#
+	}#
+data$animal<-animal#
+#
+#next, sort species names between the "sp1" and "sp2" random effects (as in Tobias et al. 2014), so that each species appears more or less the same number of times in "species1" and "species2"#
+lineages<-as.matrix(data.frame(data$THolderSp,data$TetMaleSp))#
+lineages.sorted<-random.effect.sorting(lineages,counter.max=1e6)#
+#
+#this next block translates the AOU codes back into species names as they appear in the tree and stores them in the sorted order#
+species1<-vector()#
+for(i in 1:length(lineages.sorted$sorted.data[,1])){#
+	if(lineages.sorted$sorted.data[i,1]%in%data$THolderSp){#
+		species1<-c(species1,as.character(data$sp1.treename[which(data$THolderSp==lineages.sorted$sorted.data[i,1])][1]))#
+		} else {#
+		species1<-c(species1,as.character(data$sp2.treename[which(data$TetMaleSp==lineages.sorted$sorted.data[i,1])][1]))#
+		}#
+	}	#
+species2<-vector()#
+for(i in 1:length(lineages.sorted$sorted.data[,2])){#
+	if(lineages.sorted$sorted.data[i,2]%in%data$THolderSp){#
+		species2<-c(species2,as.character(data$sp1.treename[which(data$THolderSp==lineages.sorted$sorted.data[i,2])][1]))#
+		} else {#
+		species2<-c(species2,as.character(data$sp2.treename[which(data$TetMaleSp==lineages.sorted$sorted.data[i,2])][1]))#
+		}#
+	}	#
+data$species1<-species1 #match up sorted AOU number to species name#
+data$species2<-species2 #match up sorted AOU number to species name#
+#
+data$chase.threshold<-ifelse(data$PrChasing.mean.ratio_no.min>0.5,1,0)#
+data$attack.threshold<-ifelse(data$Attack.rate.mean.ratio_no.min>0.5,1,0)#
+#
+write.csv(data,file="LMC_data_for_PLMMs.csv")#
+#
+##################################################
+##### CAN START HERE IF ABOVE HAS BEEN RUN #######
+##################################################
+#
+load('~/Dropbox/LMC2 MS/PLMMs/INphylo.RData')#
+data<-read.csv("~/Dropbox/LMC2 MS/PLMMs/LMC_data_for_PLMMs.csv")#
+#
+#define the prior (a generic, non-informative prior):#
+prior<-list(G=list(G1=list(V=1,nu=0.002),G2=list(V=1,nu=0.002),G3=list(V=1,nu=0.002),G4=list(V=1,nu=0.002)),R=list(V=1,nu=0.02))#
+#see Drury et al. 2018 Syst. Biol., general approach from http://www.mpcm-evolution.com/practice/online-practical-material-chapter-11/chapter-11-2-multiple-measurements-model-mcmcglmm#
+#see also: https://stat.ethz.ch/pipermail/r-sig-mixed-models/2010q3/004481.html#
+#and: https://stat.ethz.ch/pipermail/r-sig-mixed-models/2011q2/016385.html#
+#proportion chase ratio model on continuous proportion chase outcome--note for this and all models I included "Site" as a random effect#
+m1a<-MCMCglmm(PrChasing.mean.ratio_no.min ~ mean.Hmean.hrpr, random = ~animal + species1 + species2 + Site, data=data, family = "gaussian", ginverse = list(animal = INphylo$Ainv),prior=prior,nitt=2000000,burnin=20000,thin=1000,verbose=TRUE)#
+save(m1a,file="m1a.RData")#
+#
+#proportion chase ratio model on categorical proportion chase outcome#
+m1b<-MCMCglmm(factor(chase.threshold) ~ mean.Hmean.hrpr, random = ~animal + species1 + species2 + Site, data=data, family = "categorical", ginverse = list(animal = INphylo$Ainv),prior=prior,nitt=2000000,burnin=20000,thin=1000,verbose=TRUE,slice=TRUE)#
+save(m1b,file="m1b.RData")
+summary(m1b)
+HPDinterval(m1b$Sol[,3], prob=0.94)
+HPDinterval(m1b$Sol, prob=0.94)
+HPDinterval(m1b$Sol, prob=0.95)
+#proportion chase ratio model on categorical proportion chase outcome#
+m1b<-MCMCglmm(factor(chase.threshold) ~ mean.Hmean.hrpr, random = ~animal + species1 + species2 + Site, data=data, family = "categorical", ginverse = list(animal = INphylo$Ainv),prior=prior,nitt=2500000,burnin=20000,thin=900,verbose=TRUE,slice=TRUE)#
+save(m1b,file="m1b.RData")
+summary(m1b)
+#proportion chase ratio model on categorical proportion chase outcome#
+m1b<-MCMCglmm(factor(chase.threshold) ~ mean.Hmean.hrpr, random = ~animal + species1 + species2 + Site, data=data, family = "categorical", ginverse = list(animal = INphylo$Ainv),prior=prior,nitt=2500000,burnin=20000,thin=1500,verbose=TRUE,slice=TRUE)#
+save(m1b,file="m1b.RData")
+summary(m1v)
+summary(m1b)
+#proportion chase ratio model on categorical proportion chase outcome#
+m1b<-MCMCglmm(factor(chase.threshold) ~ mean.Hmean.hrpr, random = ~animal + species1 + species2 + Site, data=data, family = "categorical", ginverse = list(animal = INphylo$Ainv),prior=prior,nitt=3000000,burnin=20000,thin=2000,verbose=TRUE,slice=TRUE)#
+save(m1b,file="m1b.RData")
+summary(m1b)
+plot(m1b)
+?MCMCglmm()
+?summary.MCMCglmm()
+data
+#proportion chase ratio model on categorical proportion chase outcome#
+m1b<-MCMCglmm(factor(chase.threshold) ~ mean.Hmean.hrpr + Rel_density, random = ~animal + species1 + species2 + Site, data=data, family = "categorical", ginverse = list(animal = INphylo$Ainv),prior=prior,nitt=3000000,burnin=20000,thin=2000,verbose=TRUE,slice=TRUE)#
+save(m1b,file="m1b.RData")
+summary(m1b)
+plot(m1b)
+data$largest.pop<-ifelse(data$Rel_density>0.5,1,0)
+data$largets.pop
+data$largest.pop
+#proportion chase ratio model on categorical proportion chase outcome#
+m1b<-MCMCglmm(factor(chase.threshold) ~ mean.Hmean.hrpr + largest.pop, random = ~animal + species1 + species2 + Site, data=data, family = "categorical", ginverse = list(animal = INphylo$Ainv),prior=prior,nitt=2000000,burnin=20000,thin=2000,verbose=TRUE,slice=TRUE)#
+save(m1b,file="m1b.RData")
+summary(m1b)
+plot(m1b)
+?MCMCglmm
+?summary.MCMCglmm
+head(data)
+tree
+ls()
+phylo
+cophenetic(phylo)
+head(data)
+i
+i=1
+pat.mat<-cophenetic(phylo)
+pat.mat[sp1.treename[i],sp2.treename[i]]
+pat.mat[data$sp1.treename[i],data$sp2.treename[i]]
+pat.mat
+i
+data$sp1.treename[i]
+sp2.treename[i]
+data$sp2.treename[i]
+pat.mat[data$sp1.treename[i],data$sp2.treename[i]]
+pat.mat[which(colnames==data$sp1.treename[i]),data$sp2.treename[i]]
+pat.mat[which(colnames(pat.mat)==data$sp1.treename[i]),data$sp2.treename[i]]
+pat.mat[which(colnames(pat.mat)==data$sp1.treename[i]),which(colnames(pat.mat)==data$sp2.treename[i])]
+pat.mat<-cophenetic(phylo)#
+pat.dist<-vector()#
+for(i in 1:dim(data)[1]){#
+	pat.dist<-c(pat.dist,pat.mat[which(colnames(pat.mat)==data$sp1.treename[i]),which(colnames(pat.mat)==data$sp2.treename[i])])#
+}
+pat.dist
+data
+i
+i=31
+pat.mat[which(colnames(pat.mat)==data$sp1.treename[i]),which(colnames(pat.mat)==data$sp2.treename[i])]
+pat.dist
+data$patristic.distance<-pat.dist
+head(data)
+plot(data$patristic.distance,data$PrChasing.mean.ratio_no.min)
+plot(data$patristic.distance,data$chase.threshold )
+plot(data$patristic.distance,data$Attack.rate.mean.ratio_no.min)
+write.csv(data,file="LMC_data_for_PLMMs.csv")
+load('~/Dropbox/IT Project II/Whole-Clade Analyses/analyses/plmms with song/m3.RData')#
+load('~/Dropbox/IT Project II/Whole-Clade Analyses/analyses/plmms with song/m3a.RData')#
+load('~/Dropbox/IT Project II/Whole-Clade Analyses/analyses/plmms with song/m3b.RData')
+ls()
+summary(m3)
+plot(m3)
+summary(m3a)
+summary(m3b)
+ls()
+rm(list=ls())
+ls()
+load('~/Dropbox/IT Project II/Whole-Clade Analyses/analyses/plmms with song/m3a.RData')
+ls()
+summary(m3)
+load('~/Dropbox/IT Project II/Whole-Clade Analyses/analyses/plmms with song/m3.RData')
+summary(m3)
+load('~/Dropbox/IT Project II/Whole-Clade Analyses/analyses/plmms with song/m3b.RData')
+ls()
+summary(m3)
+2*(16.70+20.20)
+73.8*.7
+60.10/73.8
+source('~/ddexp/R/fit_t_general.R')#
+source('~/ddexp/R/fit_t_DD.R')#
+source('~/ddexp/R/generalized_functions.R')#
+source('~/ddexp/R/CreateGeobyClassObject_mvMORPH.R')#
+source('~/Dropbox/Scripts/R scripts/trimSimmap.R')#
+source('~/Dropbox/Scripts/R scripts/CreateClassObject.R')#
+source('~/ddexp/R/CreateClassbyClassObject_mvMORPH.R')
+i=1 #which posterior of simmap to use#
+#
+##This script fits BM/OU models with single rate, plus same models with latitude as categorical variable#
+#
+require(deSolve)#
+require(geiger)#
+require(phytools)#
+library(corpcor)#
+require(methods)#
+require(tools)#
+require(RPANDA)#
+require(mvMORPH)
+master<-read.csv("~/Dropbox/Temperate:Tropical/BIRD_MASTER_WHOLECLADE_ANALYSES.csv")
+tree<-read.nexus("~/Dropbox/Temperate:Tropical/data/trait data/Hackett_complete_trees_MCC_from1k.nex")
+load('~/Dropbox/Temperate:Tropical/data/simmaps/diet.simmap.allbirds.RData')
+load('~/Dropbox/Temperate:Tropical/data/simmaps/all.simmap.temp.RData')#
+load('~/Dropbox/Temperate:Tropical/data/simmaps/all.simmap.trop.RData')
+master<-subset(master,pelagic==0 & island.spp1==0)
+regime.simmap.trop<-all.simmap.trop#
+regime.simmap.temp<-all.simmap.temp#
+#
+res.mat<-matrix(nrow=9*9*7,ncol=13)#
+colnames(res.mat)<-c("iter","guild.category","continent","trait","N","error_1","EB1.lnL","EB1.AICc","EB1.sig2","EB1.slope","EB1.anc","EB1.error","EB1.convergence")#
+counter = 1
+i
+j=3#
+#
+	##load guild simmap#
+	if(j %in% 1:6){#
+	guild.simmap<-diet.simmap.allbirds#
+	} else {#
+	guild.simmap<-habitat.simmap.allbirds#
+	}#
+k=4	#
+		#trim tree to continental region of interest#
+		if(k==1){#
+		region<-subset(master,A==1 | B==1)#
+		region.tree<-drop.tip(tree,tree$tip.label[which(!tree$tip.label%in%region$treename)])#
+		}#
+		if(k==2){#
+		region<-subset(master,C==1 | D==1)#
+		region.tree<-drop.tip(tree,tree$tip.label[which(!tree$tip.label%in%region$treename)])#
+		}#
+		if(k>2){#
+		eval(parse(text=paste0("region<-subset(master,",continent.vec[k],"==1)")))#
+		region.tree<-drop.tip(tree,tree$tip.label[which(!tree$tip.label%in%region$treename)])#
+		}#
+		#trim simmaps to continental regions#
+		regime.simmap.trop.i<-drop.tip.simmap(regime.simmap.trop[[i]],regime.simmap.trop[[i]]$tip.label[which(!regime.simmap.trop[[i]]$tip.label%in%region.tree$tip.label)])#
+		regime.simmap.temp.i<-drop.tip.simmap(regime.simmap.temp[[i]],regime.simmap.temp[[i]]$tip.label[which(!regime.simmap.temp[[i]]$tip.label%in%region.tree$tip.label)])#
+		guild.simmap.i<-drop.tip.simmap(guild.simmap[[i]],guild.simmap[[i]]$tip.label[which(!guild.simmap[[i]]$tip.label%in%region.tree$tip.label)])
+guild.vec<-c('fruit', 'inv', 'nectar', 'omnivore', 'seed', 'vertebrate','1', '2', '3') # 1= dense, 2=semi-open, 3=open#
+continent.vec<-c("AB","CD","E","F","G","H","I","J","L")#
+regime.simmap.vec<-c('all.simmap.trop','all.simmap.temp')#
+trait.vec<-c("ln.mass","bill.pPC1","bill.pPC2","bill.pPC3","wtt.pPC1","wtt.pPC2","wtt.pPC3")
+j=3#
+#
+	##load guild simmap#
+	if(j %in% 1:6){#
+	guild.simmap<-diet.simmap.allbirds#
+	} else {#
+	guild.simmap<-habitat.simmap.allbirds#
+	}#
+k=4	#
+		#trim tree to continental region of interest#
+		if(k==1){#
+		region<-subset(master,A==1 | B==1)#
+		region.tree<-drop.tip(tree,tree$tip.label[which(!tree$tip.label%in%region$treename)])#
+		}#
+		if(k==2){#
+		region<-subset(master,C==1 | D==1)#
+		region.tree<-drop.tip(tree,tree$tip.label[which(!tree$tip.label%in%region$treename)])#
+		}#
+		if(k>2){#
+		eval(parse(text=paste0("region<-subset(master,",continent.vec[k],"==1)")))#
+		region.tree<-drop.tip(tree,tree$tip.label[which(!tree$tip.label%in%region$treename)])#
+		}#
+		#trim simmaps to continental regions#
+		regime.simmap.trop.i<-drop.tip.simmap(regime.simmap.trop[[i]],regime.simmap.trop[[i]]$tip.label[which(!regime.simmap.trop[[i]]$tip.label%in%region.tree$tip.label)])#
+		regime.simmap.temp.i<-drop.tip.simmap(regime.simmap.temp[[i]],regime.simmap.temp[[i]]$tip.label[which(!regime.simmap.temp[[i]]$tip.label%in%region.tree$tip.label)])#
+		guild.simmap.i<-drop.tip.simmap(guild.simmap[[i]],guild.simmap[[i]]$tip.label[which(!guild.simmap[[i]]$tip.label%in%region.tree$tip.label)])
+#trim region.tree to species with guild data#
+		region.tree<-drop.tip(region.tree,region.tree$tip.label[which(!region.tree$tip.label%in%regime.simmap.trop.i$tip.label)])#
+		region.tree<-drop.tip(region.tree,region.tree$tip.label[which(!region.tree$tip.label%in%regime.simmap.temp.i$tip.label)])#
+		region.tree<-drop.tip(region.tree,region.tree$tip.label[which(!region.tree$tip.label%in%guild.simmap.i$tip.label)])#
+		guild.id<-guild.vec[j]#
+		if(j %in% 1:6){#
+		guild.data<-subset(master,diet==guild.id)#
+		} else {#
+		guild.data<-subset(master,habitat==guild.id)#
+		}#
+		##need to further trim until simmap is constructed for expanded set of species#
+		guild.data<-guild.data[guild.data$treename%in%guild.simmap.i$tip.label,]
+getwd()
+for(m in 1:7){#
+			eval(parse(text=paste0("M<-guild.data$",trait.vec[m])))#
+			names(M)<-guild.data$treename#
+			M<-subset(M,M!="NA" & names(M) %in% region.tree$tip.label)#
+			nc<-name.check(region.tree,M)#
+			if(length(M)>=10){#
+				#nc#
+				if(is.list(nc)){#
+					subtree<-drop.tip(region.tree,nc$tree_not_data)#
+					} else{#
+					subtree<-region.tree#
+					}#
+				M<-M[subtree$tip.label]#
+				#calculate standard error for the trait to incorporate measurement error #from JC email: " If you’re using the last code I sent you I squared the values internally (so you have just to provide the standard error of the mean).”#
+				eval(parse(text=paste0("error<-guild.data$",trait.vec[m],".SE")))#
+				names(error)<-guild.data$treename#
+				error<-subset(error,error!="NA"  & names(error) %in% region.tree$tip.label)#
+				error<-error[subtree$tip.label]#
+				if(!identical(names(M),names(error))){stop("trait and error vector mismatch")}#
+				#trim regime simmap to focal subtree to be able to run check		#
+				regime.simmap.trop.trimmed<-drop.tip.simmap(regime.simmap.trop.i,regime.simmap.trop.i$tip.label[which(!regime.simmap.trop.i$tip.label%in%subtree$tip.label)])#
+				regime.simmap.temp.trimmed<-drop.tip.simmap(regime.simmap.temp.i,regime.simmap.temp.i$tip.label[which(!regime.simmap.temp.i$tip.label%in%subtree$tip.label)])#
+				### now fit one slope model for BM and OU, if this is the first posterior#
+				EB1.fits<-try(fit_t_standard(tree=subtree,data=M, mserr= error,model="EB",echo=FALSE))#
+#
+				#checks for convergence error#
+				if(class(EB1.fits)=="try-error" || EB1.fits$opt$convergence>0){#
+					EB1.fits<-try(fit_t_standard(tree=subtree,data=M, mserr= error,model="EB",method="BFGS",echo=FALSE))#
+				}#
+#
+				EB1.slope<-EB1.fits$opt$par[2]#
+				EB1.sig2<-EB1.fits$param[1]#
+				EB1.z0<-EB1.fits$theta[1]#
+				EB1.lnL<-EB1.fits$logl#
+				EB1.AICc<-EB1.fits$AICc#
+				EB1.error<-EB1.fits$param[3]#
+				EB1.convergence<-EB1.fits$opt$convergence#
+#
+				int<-c(i,guild.id,continent.vec[k],trait.vec[m],length(M),"0",EB1.lnL,EB1.AICc,EB1.sig2,EB1.slope,EB1.z0,EB1.error,EB1.convergence)#
+				print(int)#
+				res.mat[counter,]<-int#
+				counter = counter+1#
+			} else {#
+				int<-c(i,guild.id,continent.vec[k],trait.vec[m],length(M),"too few for fit",rep("NA",7))#
+				print(int)#
+				res.mat[counter,]<-int#
+				counter = counter+1#
+			}	#
+				eval(parse(text=paste0("write.csv(res.mat,file='EB1_modelfits_i",i,".csv')")))#
+				print(paste0("posterior = ",i,":",guild.vec[j],":",continent.vec[k],":",m))#
+		}
+traceback()
+m
+source('fit_t_general.R')#
+source('fit_t_DD.R')#
+source('generalized_functions.R')#
+source('CreateGeobyClassObject_mvMORPH.R')#
+source('make.simmap.BGB.R')#
+source('trimSimmap.R')#
+source('CreateClassObject.R')#
+source('CreateClassbyClassObject_mvMORPH.R')#
+source('common_functions.R')
+for(m in 1:7){#
+			eval(parse(text=paste0("M<-guild.data$",trait.vec[m])))#
+			names(M)<-guild.data$treename#
+			M<-subset(M,M!="NA" & names(M) %in% region.tree$tip.label)#
+			nc<-name.check(region.tree,M)#
+			if(length(M)>=10){#
+				#nc#
+				if(is.list(nc)){#
+					subtree<-drop.tip(region.tree,nc$tree_not_data)#
+					} else{#
+					subtree<-region.tree#
+					}#
+				M<-M[subtree$tip.label]#
+				#calculate standard error for the trait to incorporate measurement error #from JC email: " If you’re using the last code I sent you I squared the values internally (so you have just to provide the standard error of the mean).”#
+				eval(parse(text=paste0("error<-guild.data$",trait.vec[m],".SE")))#
+				names(error)<-guild.data$treename#
+				error<-subset(error,error!="NA"  & names(error) %in% region.tree$tip.label)#
+				error<-error[subtree$tip.label]#
+				if(!identical(names(M),names(error))){stop("trait and error vector mismatch")}#
+				#trim regime simmap to focal subtree to be able to run check		#
+				regime.simmap.trop.trimmed<-drop.tip.simmap(regime.simmap.trop.i,regime.simmap.trop.i$tip.label[which(!regime.simmap.trop.i$tip.label%in%subtree$tip.label)])#
+				regime.simmap.temp.trimmed<-drop.tip.simmap(regime.simmap.temp.i,regime.simmap.temp.i$tip.label[which(!regime.simmap.temp.i$tip.label%in%subtree$tip.label)])#
+				### now fit one slope model for BM and OU, if this is the first posterior#
+				EB1.fits<-try(fit_t_standard(tree=subtree,data=M, mserr= error,model="EB",echo=FALSE))#
+#
+				#checks for convergence error#
+				if(class(EB1.fits)=="try-error" || EB1.fits$opt$convergence>0){#
+					EB1.fits<-try(fit_t_standard(tree=subtree,data=M, mserr= error,model="EB",method="BFGS",echo=FALSE))#
+				}#
+#
+				EB1.slope<-EB1.fits$opt$par[2]#
+				EB1.sig2<-EB1.fits$param[1]#
+				EB1.z0<-EB1.fits$theta[1]#
+				EB1.lnL<-EB1.fits$logl#
+				EB1.AICc<-EB1.fits$AICc#
+				EB1.error<-EB1.fits$param[3]#
+				EB1.convergence<-EB1.fits$opt$convergence#
+#
+				int<-c(i,guild.id,continent.vec[k],trait.vec[m],length(M),"0",EB1.lnL,EB1.AICc,EB1.sig2,EB1.slope,EB1.z0,EB1.error,EB1.convergence)#
+				print(int)#
+				res.mat[counter,]<-int#
+				counter = counter+1#
+			} else {#
+				int<-c(i,guild.id,continent.vec[k],trait.vec[m],length(M),"too few for fit",rep("NA",7))#
+				print(int)#
+				res.mat[counter,]<-int#
+				counter = counter+1#
+			}	#
+				eval(parse(text=paste0("write.csv(res.mat,file='EB1_modelfits_i",i,".csv')")))#
+				print(paste0("posterior = ",i,":",guild.vec[j],":",continent.vec[k],":",m))#
+		}
+m=6
+eval(parse(text=paste0("M<-guild.data$",trait.vec[m])))#
+			names(M)<-guild.data$treename#
+			M<-subset(M,M!="NA" & names(M) %in% region.tree$tip.label)#
+			nc<-name.check(region.tree,M)
+if(is.list(nc)){#
+					subtree<-drop.tip(region.tree,nc$tree_not_data)#
+					} else{#
+					subtree<-region.tree#
+					}#
+				M<-M[subtree$tip.label]#
+				#calculate standard error for the trait to incorporate measurement error #from JC email: " If you’re using the last code I sent you I squared the values internally (so you have just to provide the standard error of the mean).”#
+				eval(parse(text=paste0("error<-guild.data$",trait.vec[m],".SE")))#
+				names(error)<-guild.data$treename#
+				error<-subset(error,error!="NA"  & names(error) %in% region.tree$tip.label)#
+				error<-error[subtree$tip.label]#
+				if(!identical(names(M),names(error))){stop("trait and error vector mismatch")}
+M
+error
+EB1.fits<-try(fit_t_standard(tree=subtree,data=M, mserr= error,model="EB",method="BFGS",echo=FALSE))
+EB1.fits
+EB1.fits<-try(fit_t_standard(tree=subtree,data=M, mserr= error,model="EB",echo=FALSE))
+EB1.fits
+?optim()
+?optim()
+source('~/ddexp/R/common_functions.R', chdir = TRUE)
+EB1.fits<-try(fit_t_standard(tree=subtree,data=M, mserr= error,model="EB",echo=FALSE))
+source('~/ddexp/R/common_functions.R', chdir = TRUE)
+EB1.fits<-try(fit_t_standard(tree=subtree,data=M, mserr= error,model="EB",echo=FALSE))
+EB1.fits
+EB1.fits<-try(fit_t_standard(tree=subtree,data=M, mserr= error,model="EB",method="BFGS",echo=FALSE))
+EB1.fits
+getwd()
+res.mat<-matrix(nrow=9*9*7,ncol=14)#
+colnames(res.mat)<-c("iter","method""guild.category","continent","trait","N","error_1","EB1.lnL","EB1.AICc","EB1.sig2","EB1.slope","EB1.anc","EB1.error","EB1.convergence")#
+counter = 1#
+for(j in 1:9){ #for each subgroup#
+#
+	##load guild simmap#
+	if(j %in% 1:6){#
+	guild.simmap<-diet.simmap.allbirds#
+	} else {#
+	guild.simmap<-habitat.simmap.allbirds#
+	}#
+	for(k in 1:9){ #for each continental region#
+		#trim tree to continental region of interest#
+		if(k==1){#
+		region<-subset(master,A==1 | B==1)#
+		region.tree<-drop.tip(tree,tree$tip.label[which(!tree$tip.label%in%region$treename)])#
+		}#
+		if(k==2){#
+		region<-subset(master,C==1 | D==1)#
+		region.tree<-drop.tip(tree,tree$tip.label[which(!tree$tip.label%in%region$treename)])#
+		}#
+		if(k>2){#
+		eval(parse(text=paste0("region<-subset(master,",continent.vec[k],"==1)")))#
+		region.tree<-drop.tip(tree,tree$tip.label[which(!tree$tip.label%in%region$treename)])#
+		}#
+		#trim simmaps to continental regions#
+		regime.simmap.trop.i<-drop.tip.simmap(regime.simmap.trop[[i]],regime.simmap.trop[[i]]$tip.label[which(!regime.simmap.trop[[i]]$tip.label%in%region.tree$tip.label)])#
+		regime.simmap.temp.i<-drop.tip.simmap(regime.simmap.temp[[i]],regime.simmap.temp[[i]]$tip.label[which(!regime.simmap.temp[[i]]$tip.label%in%region.tree$tip.label)])#
+		guild.simmap.i<-drop.tip.simmap(guild.simmap[[i]],guild.simmap[[i]]$tip.label[which(!guild.simmap[[i]]$tip.label%in%region.tree$tip.label)])#
+		#trim region.tree to species with guild data#
+		region.tree<-drop.tip(region.tree,region.tree$tip.label[which(!region.tree$tip.label%in%regime.simmap.trop.i$tip.label)])#
+		region.tree<-drop.tip(region.tree,region.tree$tip.label[which(!region.tree$tip.label%in%regime.simmap.temp.i$tip.label)])#
+		region.tree<-drop.tip(region.tree,region.tree$tip.label[which(!region.tree$tip.label%in%guild.simmap.i$tip.label)])#
+		guild.id<-guild.vec[j]#
+		if(j %in% 1:6){#
+		guild.data<-subset(master,diet==guild.id)#
+		} else {#
+		guild.data<-subset(master,habitat==guild.id)#
+		}#
+		##need to further trim until simmap is constructed for expanded set of species#
+		guild.data<-guild.data[guild.data$treename%in%guild.simmap.i$tip.label,]#
+		for(m in 1:7){#
+			eval(parse(text=paste0("M<-guild.data$",trait.vec[m])))#
+			names(M)<-guild.data$treename#
+			M<-subset(M,M!="NA" & names(M) %in% region.tree$tip.label)#
+			nc<-name.check(region.tree,M)#
+			if(length(M)>=10){#
+				#nc#
+				if(is.list(nc)){#
+					subtree<-drop.tip(region.tree,nc$tree_not_data)#
+					} else{#
+					subtree<-region.tree#
+					}#
+				M<-M[subtree$tip.label]#
+				#calculate standard error for the trait to incorporate measurement error #from JC email: " If you’re using the last code I sent you I squared the values internally (so you have just to provide the standard error of the mean).”#
+				eval(parse(text=paste0("error<-guild.data$",trait.vec[m],".SE")))#
+				names(error)<-guild.data$treename#
+				error<-subset(error,error!="NA"  & names(error) %in% region.tree$tip.label)#
+				error<-error[subtree$tip.label]#
+				if(!identical(names(M),names(error))){stop("trait and error vector mismatch")}#
+				#trim regime simmap to focal subtree to be able to run check		#
+				regime.simmap.trop.trimmed<-drop.tip.simmap(regime.simmap.trop.i,regime.simmap.trop.i$tip.label[which(!regime.simmap.trop.i$tip.label%in%subtree$tip.label)])#
+				regime.simmap.temp.trimmed<-drop.tip.simmap(regime.simmap.temp.i,regime.simmap.temp.i$tip.label[which(!regime.simmap.temp.i$tip.label%in%subtree$tip.label)])#
+				### now fit one slope model for BM and OU, if this is the first posterior#
+				method="Nelder-Mead"#
+				EB1.fits<-try(fit_t_standard(tree=subtree,data=M, mserr= error,model="EB",echo=FALSE))#
+				#checks for convergence error#
+				if(class(EB1.fits)=="try-error" || EB1.fits$opt$convergence>0){#
+					EB1.fits<-try(fit_t_standard(tree=subtree,data=M, mserr= error,model="EB",method="BFGS",echo=FALSE))#
+					method="BFGS"#
+				}#
+#
+				EB1.slope<-EB1.fits$opt$par[2]#
+				EB1.sig2<-EB1.fits$param[1]#
+				EB1.z0<-EB1.fits$theta[1]#
+				EB1.lnL<-EB1.fits$logl#
+				EB1.AICc<-EB1.fits$AICc#
+				EB1.error<-EB1.fits$param[3]#
+				EB1.convergence<-EB1.fits$opt$convergence#
+#
+				int<-c(i,method,guild.id,continent.vec[k],trait.vec[m],length(M),"0",EB1.lnL,EB1.AICc,EB1.sig2,EB1.slope,EB1.z0,EB1.error,EB1.convergence)#
+				print(int)#
+				res.mat[counter,]<-int#
+				counter = counter+1#
+			} else {#
+				int<-c(i,method,guild.id,continent.vec[k],trait.vec[m],length(M),"too few for fit",rep("NA",7))#
+				print(int)#
+				res.mat[counter,]<-int#
+				counter = counter+1#
+			}	#
+				eval(parse(text=paste0("write.csv(res.mat,file='EB1_modelfits_i",i,".csv')")))#
+				print(paste0("posterior = ",i,":",guild.vec[j],":",continent.vec[k],":",m))#
+		}#
+	}#
+#
+}#
+eval(parse(text=paste0("write.csv(res.mat,file='EB1_modelfits_i",i,".csv')")))
+load('~/Dropbox/Temperate:Tropical/data/simmaps/habitat.simmap.allbirds.RData')
+j
+for(j in 7:9){ #for each subgroup#
+#
+	##load guild simmap#
+	if(j %in% 1:6){#
+	guild.simmap<-diet.simmap.allbirds#
+	} else {#
+	guild.simmap<-habitat.simmap.allbirds#
+	}#
+	for(k in 1:9){ #for each continental region#
+		#trim tree to continental region of interest#
+		if(k==1){#
+		region<-subset(master,A==1 | B==1)#
+		region.tree<-drop.tip(tree,tree$tip.label[which(!tree$tip.label%in%region$treename)])#
+		}#
+		if(k==2){#
+		region<-subset(master,C==1 | D==1)#
+		region.tree<-drop.tip(tree,tree$tip.label[which(!tree$tip.label%in%region$treename)])#
+		}#
+		if(k>2){#
+		eval(parse(text=paste0("region<-subset(master,",continent.vec[k],"==1)")))#
+		region.tree<-drop.tip(tree,tree$tip.label[which(!tree$tip.label%in%region$treename)])#
+		}#
+		#trim simmaps to continental regions#
+		regime.simmap.trop.i<-drop.tip.simmap(regime.simmap.trop[[i]],regime.simmap.trop[[i]]$tip.label[which(!regime.simmap.trop[[i]]$tip.label%in%region.tree$tip.label)])#
+		regime.simmap.temp.i<-drop.tip.simmap(regime.simmap.temp[[i]],regime.simmap.temp[[i]]$tip.label[which(!regime.simmap.temp[[i]]$tip.label%in%region.tree$tip.label)])#
+		guild.simmap.i<-drop.tip.simmap(guild.simmap[[i]],guild.simmap[[i]]$tip.label[which(!guild.simmap[[i]]$tip.label%in%region.tree$tip.label)])#
+		#trim region.tree to species with guild data#
+		region.tree<-drop.tip(region.tree,region.tree$tip.label[which(!region.tree$tip.label%in%regime.simmap.trop.i$tip.label)])#
+		region.tree<-drop.tip(region.tree,region.tree$tip.label[which(!region.tree$tip.label%in%regime.simmap.temp.i$tip.label)])#
+		region.tree<-drop.tip(region.tree,region.tree$tip.label[which(!region.tree$tip.label%in%guild.simmap.i$tip.label)])#
+		guild.id<-guild.vec[j]#
+		if(j %in% 1:6){#
+		guild.data<-subset(master,diet==guild.id)#
+		} else {#
+		guild.data<-subset(master,habitat==guild.id)#
+		}#
+		##need to further trim until simmap is constructed for expanded set of species#
+		guild.data<-guild.data[guild.data$treename%in%guild.simmap.i$tip.label,]#
+		for(m in 1:7){#
+			eval(parse(text=paste0("M<-guild.data$",trait.vec[m])))#
+			names(M)<-guild.data$treename#
+			M<-subset(M,M!="NA" & names(M) %in% region.tree$tip.label)#
+			nc<-name.check(region.tree,M)#
+			if(length(M)>=10){#
+				#nc#
+				if(is.list(nc)){#
+					subtree<-drop.tip(region.tree,nc$tree_not_data)#
+					} else{#
+					subtree<-region.tree#
+					}#
+				M<-M[subtree$tip.label]#
+				#calculate standard error for the trait to incorporate measurement error #from JC email: " If you’re using the last code I sent you I squared the values internally (so you have just to provide the standard error of the mean).”#
+				eval(parse(text=paste0("error<-guild.data$",trait.vec[m],".SE")))#
+				names(error)<-guild.data$treename#
+				error<-subset(error,error!="NA"  & names(error) %in% region.tree$tip.label)#
+				error<-error[subtree$tip.label]#
+				if(!identical(names(M),names(error))){stop("trait and error vector mismatch")}#
+				#trim regime simmap to focal subtree to be able to run check		#
+				regime.simmap.trop.trimmed<-drop.tip.simmap(regime.simmap.trop.i,regime.simmap.trop.i$tip.label[which(!regime.simmap.trop.i$tip.label%in%subtree$tip.label)])#
+				regime.simmap.temp.trimmed<-drop.tip.simmap(regime.simmap.temp.i,regime.simmap.temp.i$tip.label[which(!regime.simmap.temp.i$tip.label%in%subtree$tip.label)])#
+				### now fit one slope model for BM and OU, if this is the first posterior#
+				method="Nelder-Mead"#
+				EB1.fits<-try(fit_t_standard(tree=subtree,data=M, mserr= error,model="EB",echo=FALSE))#
+				#checks for convergence error#
+				if(class(EB1.fits)=="try-error" || EB1.fits$opt$convergence>0){#
+					EB1.fits<-try(fit_t_standard(tree=subtree,data=M, mserr= error,model="EB",method="BFGS",echo=FALSE))#
+					method="BFGS"#
+				}#
+#
+				EB1.slope<-EB1.fits$opt$par[2]#
+				EB1.sig2<-EB1.fits$param[1]#
+				EB1.z0<-EB1.fits$theta[1]#
+				EB1.lnL<-EB1.fits$logl#
+				EB1.AICc<-EB1.fits$AICc#
+				EB1.error<-EB1.fits$param[3]#
+				EB1.convergence<-EB1.fits$opt$convergence#
+#
+				int<-c(i,method,guild.id,continent.vec[k],trait.vec[m],length(M),"0",EB1.lnL,EB1.AICc,EB1.sig2,EB1.slope,EB1.z0,EB1.error,EB1.convergence)#
+				print(int)#
+				res.mat[counter,]<-int#
+				counter = counter+1#
+			} else {#
+				int<-c(i,method,guild.id,continent.vec[k],trait.vec[m],length(M),"too few for fit",rep("NA",7))#
+				print(int)#
+				res.mat[counter,]<-int#
+				counter = counter+1#
+			}	#
+				eval(parse(text=paste0("write.csv(res.mat,file='EB1_modelfits_i",i,".csv')")))#
+				print(paste0("posterior = ",i,":",guild.vec[j],":",continent.vec[k],":",m))#
+		}#
+	}#
+#
+}#
+eval(parse(text=paste0("write.csv(res.mat,file='EB1_modelfits_i",i,".csv')")))
+j=5#
+#
+	##load guild simmap#
+	if(j %in% 1:6){#
+	guild.simmap<-diet.simmap.allbirds#
+	} else {#
+	guild.simmap<-habitat.simmap.allbirds#
+	}#
+k=6	#
+		#trim tree to continental region of interest#
+		if(k==1){#
+		region<-subset(master,A==1 | B==1)#
+		region.tree<-drop.tip(tree,tree$tip.label[which(!tree$tip.label%in%region$treename)])#
+		}#
+		if(k==2){#
+		region<-subset(master,C==1 | D==1)#
+		region.tree<-drop.tip(tree,tree$tip.label[which(!tree$tip.label%in%region$treename)])#
+		}#
+		if(k>2){#
+		eval(parse(text=paste0("region<-subset(master,",continent.vec[k],"==1)")))#
+		region.tree<-drop.tip(tree,tree$tip.label[which(!tree$tip.label%in%region$treename)])#
+		}#
+		#trim simmaps to continental regions#
+		regime.simmap.trop.i<-drop.tip.simmap(regime.simmap.trop[[i]],regime.simmap.trop[[i]]$tip.label[which(!regime.simmap.trop[[i]]$tip.label%in%region.tree$tip.label)])#
+		regime.simmap.temp.i<-drop.tip.simmap(regime.simmap.temp[[i]],regime.simmap.temp[[i]]$tip.label[which(!regime.simmap.temp[[i]]$tip.label%in%region.tree$tip.label)])#
+		guild.simmap.i<-drop.tip.simmap(guild.simmap[[i]],guild.simmap[[i]]$tip.label[which(!guild.simmap[[i]]$tip.label%in%region.tree$tip.label)])#
+		#trim region.tree to species with guild data#
+		region.tree<-drop.tip(region.tree,region.tree$tip.label[which(!region.tree$tip.label%in%regime.simmap.trop.i$tip.label)])#
+		region.tree<-drop.tip(region.tree,region.tree$tip.label[which(!region.tree$tip.label%in%regime.simmap.temp.i$tip.label)])#
+		region.tree<-drop.tip(region.tree,region.tree$tip.label[which(!region.tree$tip.label%in%guild.simmap.i$tip.label)])#
+		guild.id<-guild.vec[j]#
+		if(j %in% 1:6){#
+		guild.data<-subset(master,diet==guild.id)#
+		} else {#
+		guild.data<-subset(master,habitat==guild.id)#
+		}#
+		##need to further trim until simmap is constructed for expanded set of species#
+		guild.data<-guild.data[guild.data$treename%in%guild.simmap.i$tip.label,]
+m=2
+eval(parse(text=paste0("M<-guild.data$",trait.vec[m])))#
+			names(M)<-guild.data$treename#
+			M<-subset(M,M!="NA" & names(M) %in% region.tree$tip.label)#
+			nc<-name.check(region.tree,M)
+#nc#
+				if(is.list(nc)){#
+					subtree<-drop.tip(region.tree,nc$tree_not_data)#
+					} else{#
+					subtree<-region.tree#
+					}#
+				M<-M[subtree$tip.label]#
+				#calculate standard error for the trait to incorporate measurement error #from JC email: " If you’re using the last code I sent you I squared the values internally (so you have just to provide the standard error of the mean).”#
+				eval(parse(text=paste0("error<-guild.data$",trait.vec[m],".SE")))#
+				names(error)<-guild.data$treename#
+				error<-subset(error,error!="NA"  & names(error) %in% region.tree$tip.label)#
+				error<-error[subtree$tip.label]#
+				if(!identical(names(M),names(error))){stop("trait and error vector mismatch")}#
+				#trim regime simmap to focal subtree to be able to run check		#
+				regime.simmap.trop.trimmed<-drop.tip.simmap(regime.simmap.trop.i,regime.simmap.trop.i$tip.label[which(!regime.simmap.trop.i$tip.label%in%subtree$tip.label)])#
+				regime.simmap.temp.trimmed<-drop.tip.simmap(regime.simmap.temp.i,regime.simmap.temp.i$tip.label[which(!regime.simmap.temp.i$tip.label%in%subtree$tip.label)])#
+				### now fit one slope model for BM and OU, if this is the first posterior#
+				method="Nelder-Mead"#
+				EB1.fits<-try(fit_t_standard(tree=subtree,data=M, mserr= error,model="EB",echo=FALSE))
+EB1.fits
+try(fit_t_standard(tree=subtree,data=M, mserr= error,model="EB",method="BFGS",echo=FALSE))
+fit_t_standard(tree=subtree,data=M, mserr= error,model="EB",method="BFGS",echo=FALSE)
+fit_t_standard(tree=subtree,data=M, mserr= error,model="EB",method="BFGS",echo=TRUE)
+fit_t_standard(tree=subtree,data=M, mserr= error,model="EB",method="BFGS",echo=TRUE)->hold
+hold
+log(1)
+source('common_functions.R')
+fit_t_standard(tree=subtree,data=M, mserr= error,model="EB",method="BFGS",echo=TRUE)->hold
+hold
+source('common_functions.R')
+fit_t_standard(tree=subtree,data=M, mserr= error,model="EB",method="BFGS",echo=TRUE)->hold
+hold
+fit_t_standard(tree=subtree,data=M, mserr= error,model="EB",method="BFGS",echo=TRUE,start_val=c(0.1,-0.1,0))->hold
+hold
+fit_t_standard(tree=subtree,data=M, mserr= error,model="EB",method="BFGS",echo=TRUE)->hold
+hold
+fit_t_standard(tree=subtree,data=M, mserr= error,model="EB",echo=TRUE)->hold
+hold
+fit_t_standard(tree=subtree,data=M, mserr= error,model="EB",echo=TRUE,start_val=c(log(hold$param[1]),hold$param[2],log(hold$param[3]))->hold2
+fit_t_standard(tree=subtree,data=M, mserr= error,model="EB",echo=TRUE,start_val=c(log(hold$param[1]),hold$param[2],log(hold$param[3])))->hold2
+hold2
+fit_t_standard(tree=subtree,data=M, mserr= error,model="EB",method="BFGS",echo=TRUE,start_val=c(log(hold$param[1]),hold$param[2],log(hold$param[3])))->hold2
+hold2
+source('common_functions.R')
+getwd()
+res.mat<-matrix(nrow=9*9*7,ncol=14)#
+colnames(res.mat)<-c("iter","method""guild.category","continent","trait","N","error_1","EB1.lnL","EB1.AICc","EB1.sig2","EB1.slope","EB1.anc","EB1.error","EB1.convergence")#
+counter = 1#
+for(j in 1:9){#
+	##load guild simmap#
+	if(j %in% 1:6){#
+	guild.simmap<-diet.simmap.allbirds#
+	} else {#
+	guild.simmap<-habitat.simmap.allbirds#
+	}#
+	for(k in 1:9){		#
+		#trim tree to continental region of interest#
+		if(k==1){#
+		region<-subset(master,A==1 | B==1)#
+		region.tree<-drop.tip(tree,tree$tip.label[which(!tree$tip.label%in%region$treename)])#
+		}#
+		if(k==2){#
+		region<-subset(master,C==1 | D==1)#
+		region.tree<-drop.tip(tree,tree$tip.label[which(!tree$tip.label%in%region$treename)])#
+		}#
+		if(k>2){#
+		eval(parse(text=paste0("region<-subset(master,",continent.vec[k],"==1)")))#
+		region.tree<-drop.tip(tree,tree$tip.label[which(!tree$tip.label%in%region$treename)])#
+		}#
+		#trim simmaps to continental regions#
+		regime.simmap.trop.i<-drop.tip.simmap(regime.simmap.trop[[i]],regime.simmap.trop[[i]]$tip.label[which(!regime.simmap.trop[[i]]$tip.label%in%region.tree$tip.label)])#
+		regime.simmap.temp.i<-drop.tip.simmap(regime.simmap.temp[[i]],regime.simmap.temp[[i]]$tip.label[which(!regime.simmap.temp[[i]]$tip.label%in%region.tree$tip.label)])#
+		guild.simmap.i<-drop.tip.simmap(guild.simmap[[i]],guild.simmap[[i]]$tip.label[which(!guild.simmap[[i]]$tip.label%in%region.tree$tip.label)])#
+		#trim region.tree to species with guild data#
+		region.tree<-drop.tip(region.tree,region.tree$tip.label[which(!region.tree$tip.label%in%regime.simmap.trop.i$tip.label)])#
+		region.tree<-drop.tip(region.tree,region.tree$tip.label[which(!region.tree$tip.label%in%regime.simmap.temp.i$tip.label)])#
+		region.tree<-drop.tip(region.tree,region.tree$tip.label[which(!region.tree$tip.label%in%guild.simmap.i$tip.label)])#
+		guild.id<-guild.vec[j]#
+		if(j %in% 1:6){#
+		guild.data<-subset(master,diet==guild.id)#
+		} else {#
+		guild.data<-subset(master,habitat==guild.id)#
+		}#
+		##need to further trim until simmap is constructed for expanded set of species#
+		guild.data<-guild.data[guild.data$treename%in%guild.simmap.i$tip.label,]#
+		for(m in 1:7){#
+			eval(parse(text=paste0("M<-guild.data$",trait.vec[m])))#
+			names(M)<-guild.data$treename#
+			M<-subset(M,M!="NA" & names(M) %in% region.tree$tip.label)#
+			nc<-name.check(region.tree,M)#
+			if(length(M)>=10){#
+				#nc#
+				if(is.list(nc)){#
+					subtree<-drop.tip(region.tree,nc$tree_not_data)#
+					} else{#
+					subtree<-region.tree#
+					}#
+				M<-M[subtree$tip.label]#
+				#calculate standard error for the trait to incorporate measurement error #from JC email: " If you’re using the last code I sent you I squared the values internally (so you have just to provide the standard error of the mean).”#
+				eval(parse(text=paste0("error<-guild.data$",trait.vec[m],".SE")))#
+				names(error)<-guild.data$treename#
+				error<-subset(error,error!="NA"  & names(error) %in% region.tree$tip.label)#
+				error<-error[subtree$tip.label]#
+				if(!identical(names(M),names(error))){stop("trait and error vector mismatch")}#
+				#trim regime simmap to focal subtree to be able to run check		#
+				regime.simmap.trop.trimmed<-drop.tip.simmap(regime.simmap.trop.i,regime.simmap.trop.i$tip.label[which(!regime.simmap.trop.i$tip.label%in%subtree$tip.label)])#
+				regime.simmap.temp.trimmed<-drop.tip.simmap(regime.simmap.temp.i,regime.simmap.temp.i$tip.label[which(!regime.simmap.temp.i$tip.label%in%subtree$tip.label)])#
+				### now fit one slope model for BM and OU, if this is the first posterior#
+				method="Nelder-Mead"#
+				EB1.fits<-try(fit_t_standard(tree=subtree,data=M, mserr= error,model="EB",echo=FALSE))#
+				#checks for convergence error#
+				if(class(EB1.fits)=="try-error" || EB1.fits$opt$convergence>0){#
+					EB1.fits<-try(fit_t_standard(tree=subtree,data=M, mserr= error,model="EB",echo=FALSE,start_val=c(log(EB1.fits$param[1]),EB1.fits$param[2],log(EB1.fits$param[3]))))#
+					if(class(EB1.fits)=="try-error" || EB1.fits$opt$convergence>0){#
+						EB1.fits<-try(fit_t_standard(tree=subtree,data=M, mserr= error,model="EB",method="BFGS",echo=FALSE,start_val=c(log(EB1.fits$param[1]),EB1.fits$param[2],log(EB1.fits$param[3]))))#
+						method="BFGS"#
+					}#
+				}#
+#
+				EB1.slope<-EB1.fits$opt$par[2]#
+				EB1.sig2<-EB1.fits$param[1]#
+				EB1.z0<-EB1.fits$theta[1]#
+				EB1.lnL<-EB1.fits$logl#
+				EB1.AICc<-EB1.fits$AICc#
+				EB1.error<-EB1.fits$param[3]#
+				EB1.convergence<-EB1.fits$opt$convergence#
+#
+				int<-c(i,method,guild.id,continent.vec[k],trait.vec[m],length(M),"0",EB1.lnL,EB1.AICc,EB1.sig2,EB1.slope,EB1.z0,EB1.error,EB1.convergence)#
+				print(int)#
+				res.mat[counter,]<-int#
+				counter = counter+1#
+			} else {#
+				int<-c(i,method,guild.id,continent.vec[k],trait.vec[m],length(M),"too few for fit",rep("NA",7))#
+				print(int)#
+				res.mat[counter,]<-int#
+				counter = counter+1#
+			}	#
+				eval(parse(text=paste0("write.csv(res.mat,file='EB1_modelfits_i",i,".csv')")))#
+				print(paste0("posterior = ",i,":",guild.vec[j],":",continent.vec[k],":",m))#
+		}#
+	}#
+#
+}#
+eval(parse(text=paste0("write.csv(res.mat,file='EB1_modelfits_i",i,".csv')")))
+EB1.fits
+j=1
+k=1
+m=1
+guild.simmap<-diet.simmap.allbirds
+region<-subset(master,A==1 | B==1)#
+		region.tree<-drop.tip(tree,tree$tip.label[which(!tree$tip.label%in%region$treename)])
+regime.simmap.trop.i<-drop.tip.simmap(regime.simmap.trop[[i]],regime.simmap.trop[[i]]$tip.label[which(!regime.simmap.trop[[i]]$tip.label%in%region.tree$tip.label)])#
+		regime.simmap.temp.i<-drop.tip.simmap(regime.simmap.temp[[i]],regime.simmap.temp[[i]]$tip.label[which(!regime.simmap.temp[[i]]$tip.label%in%region.tree$tip.label)])#
+		guild.simmap.i<-drop.tip.simmap(guild.simmap[[i]],guild.simmap[[i]]$tip.label[which(!guild.simmap[[i]]$tip.label%in%region.tree$tip.label)])#
+		#trim region.tree to species with guild data#
+		region.tree<-drop.tip(region.tree,region.tree$tip.label[which(!region.tree$tip.label%in%regime.simmap.trop.i$tip.label)])#
+		region.tree<-drop.tip(region.tree,region.tree$tip.label[which(!region.tree$tip.label%in%regime.simmap.temp.i$tip.label)])#
+		region.tree<-drop.tip(region.tree,region.tree$tip.label[which(!region.tree$tip.label%in%guild.simmap.i$tip.label)])#
+		guild.id<-guild.vec[j]#
+		if(j %in% 1:6){#
+		guild.data<-subset(master,diet==guild.id)#
+		} else {#
+		guild.data<-subset(master,habitat==guild.id)#
+		}#
+		##need to further trim until simmap is constructed for expanded set of species#
+		guild.data<-guild.data[guild.data$treename%in%guild.simmap.i$tip.label,]
+eval(parse(text=paste0("M<-guild.data$",trait.vec[m])))#
+			names(M)<-guild.data$treename#
+			M<-subset(M,M!="NA" & names(M) %in% region.tree$tip.label)#
+			nc<-name.check(region.tree,M)
+#nc#
+				if(is.list(nc)){#
+					subtree<-drop.tip(region.tree,nc$tree_not_data)#
+					} else{#
+					subtree<-region.tree#
+					}#
+				M<-M[subtree$tip.label]#
+				#calculate standard error for the trait to incorporate measurement error #from JC email: " If you’re using the last code I sent you I squared the values internally (so you have just to provide the standard error of the mean).”#
+				eval(parse(text=paste0("error<-guild.data$",trait.vec[m],".SE")))#
+				names(error)<-guild.data$treename#
+				error<-subset(error,error!="NA"  & names(error) %in% region.tree$tip.label)#
+				error<-error[subtree$tip.label]#
+				if(!identical(names(M),names(error))){stop("trait and error vector mismatch")}#
+				#trim regime simmap to focal subtree to be able to run check		#
+				regime.simmap.trop.trimmed<-drop.tip.simmap(regime.simmap.trop.i,regime.simmap.trop.i$tip.label[which(!regime.simmap.trop.i$tip.label%in%subtree$tip.label)])#
+				regime.simmap.temp.trimmed<-drop.tip.simmap(regime.simmap.temp.i,regime.simmap.temp.i$tip.label[which(!regime.simmap.temp.i$tip.label%in%subtree$tip.label)])#
+				### now fit one slope model for BM and OU, if this is the first posterior#
+				method="Nelder-Mead"#
+				EB1.fits<-try(fit_t_standard(tree=subtree,data=M, mserr= error,model="EB",echo=FALSE))
+EB1.fits
+m=4
+eval(parse(text=paste0("M<-guild.data$",trait.vec[m])))#
+			names(M)<-guild.data$treename#
+			M<-subset(M,M!="NA" & names(M) %in% region.tree$tip.label)#
+			nc<-name.check(region.tree,M)
+#nc#
+				if(is.list(nc)){#
+					subtree<-drop.tip(region.tree,nc$tree_not_data)#
+					} else{#
+					subtree<-region.tree#
+					}#
+				M<-M[subtree$tip.label]#
+				#calculate standard error for the trait to incorporate measurement error #from JC email: " If you’re using the last code I sent you I squared the values internally (so you have just to provide the standard error of the mean).”#
+				eval(parse(text=paste0("error<-guild.data$",trait.vec[m],".SE")))#
+				names(error)<-guild.data$treename#
+				error<-subset(error,error!="NA"  & names(error) %in% region.tree$tip.label)#
+				error<-error[subtree$tip.label]#
+				if(!identical(names(M),names(error))){stop("trait and error vector mismatch")}#
+				#trim regime simmap to focal subtree to be able to run check		#
+				regime.simmap.trop.trimmed<-drop.tip.simmap(regime.simmap.trop.i,regime.simmap.trop.i$tip.label[which(!regime.simmap.trop.i$tip.label%in%subtree$tip.label)])#
+				regime.simmap.temp.trimmed<-drop.tip.simmap(regime.simmap.temp.i,regime.simmap.temp.i$tip.label[which(!regime.simmap.temp.i$tip.label%in%subtree$tip.label)])#
+				### now fit one slope model for BM and OU, if this is the first posterior#
+				method="Nelder-Mead"#
+				EB1.fits<-try(fit_t_standard(tree=subtree,data=M, mserr= error,model="EB",echo=FALSE))
+EB1.fits
+j=5#
+#
+	##load guild simmap#
+	if(j %in% 1:6){#
+	guild.simmap<-diet.simmap.allbirds#
+	} else {#
+	guild.simmap<-habitat.simmap.allbirds#
+	}#
+k=6	#
+		#trim tree to continental region of interest#
+		if(k==1){#
+		region<-subset(master,A==1 | B==1)#
+		region.tree<-drop.tip(tree,tree$tip.label[which(!tree$tip.label%in%region$treename)])#
+		}#
+		if(k==2){#
+		region<-subset(master,C==1 | D==1)#
+		region.tree<-drop.tip(tree,tree$tip.label[which(!tree$tip.label%in%region$treename)])#
+		}#
+		if(k>2){#
+		eval(parse(text=paste0("region<-subset(master,",continent.vec[k],"==1)")))#
+		region.tree<-drop.tip(tree,tree$tip.label[which(!tree$tip.label%in%region$treename)])#
+		}#
+		#trim simmaps to continental regions#
+		regime.simmap.trop.i<-drop.tip.simmap(regime.simmap.trop[[i]],regime.simmap.trop[[i]]$tip.label[which(!regime.simmap.trop[[i]]$tip.label%in%region.tree$tip.label)])#
+		regime.simmap.temp.i<-drop.tip.simmap(regime.simmap.temp[[i]],regime.simmap.temp[[i]]$tip.label[which(!regime.simmap.temp[[i]]$tip.label%in%region.tree$tip.label)])#
+		guild.simmap.i<-drop.tip.simmap(guild.simmap[[i]],guild.simmap[[i]]$tip.label[which(!guild.simmap[[i]]$tip.label%in%region.tree$tip.label)])#
+		#trim region.tree to species with guild data#
+		region.tree<-drop.tip(region.tree,region.tree$tip.label[which(!region.tree$tip.label%in%regime.simmap.trop.i$tip.label)])#
+		region.tree<-drop.tip(region.tree,region.tree$tip.label[which(!region.tree$tip.label%in%regime.simmap.temp.i$tip.label)])#
+		region.tree<-drop.tip(region.tree,region.tree$tip.label[which(!region.tree$tip.label%in%guild.simmap.i$tip.label)])#
+		guild.id<-guild.vec[j]#
+		if(j %in% 1:6){#
+		guild.data<-subset(master,diet==guild.id)#
+		} else {#
+		guild.data<-subset(master,habitat==guild.id)#
+		}#
+		##need to further trim until simmap is constructed for expanded set of species#
+		guild.data<-guild.data[guild.data$treename%in%guild.simmap.i$tip.label,]
+m=2
+eval(parse(text=paste0("M<-guild.data$",trait.vec[m])))#
+			names(M)<-guild.data$treename#
+			M<-subset(M,M!="NA" & names(M) %in% region.tree$tip.label)#
+			nc<-name.check(region.tree,M)
+#nc#
+				if(is.list(nc)){#
+					subtree<-drop.tip(region.tree,nc$tree_not_data)#
+					} else{#
+					subtree<-region.tree#
+					}#
+				M<-M[subtree$tip.label]#
+				#calculate standard error for the trait to incorporate measurement error #from JC email: " If you’re using the last code I sent you I squared the values internally (so you have just to provide the standard error of the mean).”#
+				eval(parse(text=paste0("error<-guild.data$",trait.vec[m],".SE")))#
+				names(error)<-guild.data$treename#
+				error<-subset(error,error!="NA"  & names(error) %in% region.tree$tip.label)#
+				error<-error[subtree$tip.label]#
+				if(!identical(names(M),names(error))){stop("trait and error vector mismatch")}#
+				#trim regime simmap to focal subtree to be able to run check		#
+				regime.simmap.trop.trimmed<-drop.tip.simmap(regime.simmap.trop.i,regime.simmap.trop.i$tip.label[which(!regime.simmap.trop.i$tip.label%in%subtree$tip.label)])#
+				regime.simmap.temp.trimmed<-drop.tip.simmap(regime.simmap.temp.i,regime.simmap.temp.i$tip.label[which(!regime.simmap.temp.i$tip.label%in%subtree$tip.label)])#
+				### now fit one slope model for BM and OU, if this is the first posterior#
+				method="Nelder-Mead"#
+				EB1.fits<-try(fit_t_standard(tree=subtree,data=M, mserr= error,model="EB",echo=FALSE))
+EB1.fits
+#checks for convergence error#
+				if(class(EB1.fits)=="try-error" || EB1.fits$opt$convergence>0){#
+					EB1.fits<-try(fit_t_standard(tree=subtree,data=M, mserr= error,model="EB",echo=FALSE,start_val=c(log(EB1.fits$param[1]),EB1.fits$param[2],log(EB1.fits$param[3]))))#
+					if(class(EB1.fits)=="try-error" || EB1.fits$opt$convergence>0){#
+						EB1.fits<-try(fit_t_standard(tree=subtree,data=M, mserr= error,model="EB",method="BFGS",echo=FALSE,start_val=c(log(EB1.fits$param[1]),EB1.fits$param[2],log(EB1.fits$param[3]))))#
+						method="BFGS"#
+					}#
+				}
+EB1.fits
+method
+EB1.fits
+class(EB1.fits)
+EB1.fits<-try(fit_t_standard(tree=subtree,data=M, mserr= error,model="EB",echo=FALSE,start_val=c(log(EB1.fits$param[1]),EB1.fits$param[2],log(EB1.fits$param[3]))))
+EB1.fits
+res.mat<-matrix(nrow=9*9*7,ncol=14)#
+colnames(res.mat)<-c("iter","method""guild.category","continent","trait","N","error_1","EB1.lnL","EB1.AICc","EB1.sig2","EB1.slope","EB1.anc","EB1.error","EB1.convergence")#
+counter = 1#
+for(j in 1:9){#
+	##load guild simmap#
+	if(j %in% 1:6){#
+	guild.simmap<-diet.simmap.allbirds#
+	} else {#
+	guild.simmap<-habitat.simmap.allbirds#
+	}#
+	for(k in 1:9){		#
+		#trim tree to continental region of interest#
+		if(k==1){#
+		region<-subset(master,A==1 | B==1)#
+		region.tree<-drop.tip(tree,tree$tip.label[which(!tree$tip.label%in%region$treename)])#
+		}#
+		if(k==2){#
+		region<-subset(master,C==1 | D==1)#
+		region.tree<-drop.tip(tree,tree$tip.label[which(!tree$tip.label%in%region$treename)])#
+		}#
+		if(k>2){#
+		eval(parse(text=paste0("region<-subset(master,",continent.vec[k],"==1)")))#
+		region.tree<-drop.tip(tree,tree$tip.label[which(!tree$tip.label%in%region$treename)])#
+		}#
+		#trim simmaps to continental regions#
+		regime.simmap.trop.i<-drop.tip.simmap(regime.simmap.trop[[i]],regime.simmap.trop[[i]]$tip.label[which(!regime.simmap.trop[[i]]$tip.label%in%region.tree$tip.label)])#
+		regime.simmap.temp.i<-drop.tip.simmap(regime.simmap.temp[[i]],regime.simmap.temp[[i]]$tip.label[which(!regime.simmap.temp[[i]]$tip.label%in%region.tree$tip.label)])#
+		guild.simmap.i<-drop.tip.simmap(guild.simmap[[i]],guild.simmap[[i]]$tip.label[which(!guild.simmap[[i]]$tip.label%in%region.tree$tip.label)])#
+		#trim region.tree to species with guild data#
+		region.tree<-drop.tip(region.tree,region.tree$tip.label[which(!region.tree$tip.label%in%regime.simmap.trop.i$tip.label)])#
+		region.tree<-drop.tip(region.tree,region.tree$tip.label[which(!region.tree$tip.label%in%regime.simmap.temp.i$tip.label)])#
+		region.tree<-drop.tip(region.tree,region.tree$tip.label[which(!region.tree$tip.label%in%guild.simmap.i$tip.label)])#
+		guild.id<-guild.vec[j]#
+		if(j %in% 1:6){#
+		guild.data<-subset(master,diet==guild.id)#
+		} else {#
+		guild.data<-subset(master,habitat==guild.id)#
+		}#
+		##need to further trim until simmap is constructed for expanded set of species#
+		guild.data<-guild.data[guild.data$treename%in%guild.simmap.i$tip.label,]#
+		for(m in 1:7){#
+			eval(parse(text=paste0("M<-guild.data$",trait.vec[m])))#
+			names(M)<-guild.data$treename#
+			M<-subset(M,M!="NA" & names(M) %in% region.tree$tip.label)#
+			nc<-name.check(region.tree,M)#
+			if(length(M)>=10){#
+				#nc#
+				if(is.list(nc)){#
+					subtree<-drop.tip(region.tree,nc$tree_not_data)#
+					} else{#
+					subtree<-region.tree#
+					}#
+				M<-M[subtree$tip.label]#
+				#calculate standard error for the trait to incorporate measurement error #from JC email: " If you’re using the last code I sent you I squared the values internally (so you have just to provide the standard error of the mean).”#
+				eval(parse(text=paste0("error<-guild.data$",trait.vec[m],".SE")))#
+				names(error)<-guild.data$treename#
+				error<-subset(error,error!="NA"  & names(error) %in% region.tree$tip.label)#
+				error<-error[subtree$tip.label]#
+				if(!identical(names(M),names(error))){stop("trait and error vector mismatch")}#
+				#trim regime simmap to focal subtree to be able to run check		#
+				regime.simmap.trop.trimmed<-drop.tip.simmap(regime.simmap.trop.i,regime.simmap.trop.i$tip.label[which(!regime.simmap.trop.i$tip.label%in%subtree$tip.label)])#
+				regime.simmap.temp.trimmed<-drop.tip.simmap(regime.simmap.temp.i,regime.simmap.temp.i$tip.label[which(!regime.simmap.temp.i$tip.label%in%subtree$tip.label)])#
+				### now fit one slope model for BM and OU, if this is the first posterior#
+				method="Nelder-Mead"#
+				EB1.fits<-try(fit_t_standard(tree=subtree,data=M, mserr= error,model="EB",echo=FALSE))#
+				#checks for convergence error#
+				if(class(EB1.fits)=="try-error" || EB1.fits$opt$convergence>0){#
+					EB1.fits<-try(fit_t_standard(tree=subtree,data=M, mserr= error,model="EB",echo=FALSE,start_val=c(log(EB1.fits$param[1]),EB1.fits$param[2],log(EB1.fits$param[3]))))#
+					if(class(EB1.fits)=="try-error" || EB1.fits$opt$convergence>0){#
+						EB1.fits<-try(fit_t_standard(tree=subtree,data=M, mserr= error,model="EB",method="BFGS",echo=FALSE,start_val=c(log(EB1.fits$param[1]),EB1.fits$param[2],log(EB1.fits$param[3]))))#
+						method="BFGS"#
+					}#
+				}#
+#
+				EB1.slope<-EB1.fits$param[2]#
+				EB1.sig2<-EB1.fits$param[1]#
+				EB1.z0<-EB1.fits$theta[1]#
+				EB1.lnL<-EB1.fits$logl#
+				EB1.AICc<-EB1.fits$AICc#
+				EB1.error<-EB1.fits$param[3]#
+				EB1.convergence<-EB1.fits$opt$convergence#
+#
+				int<-c(i,method,guild.id,continent.vec[k],trait.vec[m],length(M),"0",EB1.lnL,EB1.AICc,EB1.sig2,EB1.slope,EB1.z0,EB1.error,EB1.convergence)#
+				print(int)#
+				res.mat[counter,]<-int#
+				counter = counter+1#
+			} else {#
+				int<-c(i,method,guild.id,continent.vec[k],trait.vec[m],length(M),"too few for fit",rep("NA",7))#
+				print(int)#
+				res.mat[counter,]<-int#
+				counter = counter+1#
+			}	#
+				eval(parse(text=paste0("write.csv(res.mat,file='EB1_modelfits_i",i,".csv')")))#
+				print(paste0("posterior = ",i,":",guild.vec[j],":",continent.vec[k],":",m))#
+		}#
+	}#
+#
+}#
+eval(parse(text=paste0("write.csv(res.mat,file='EB1_modelfits_i",i,".csv')")))
