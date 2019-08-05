@@ -54,12 +54,14 @@ if(is.null(regime.map)){ 	# single slope version
 		#fit model
 		sigma.constraint<-rep(1, dim(smap$mapped.edge)[2])
 		beta.constraint<-rep(1, dim(smap$mapped.edge)[2])
-
+		
+		up=c(rep(upper$beta,length(beta.constraint)),Inf,0)
+				
 		if(model%in%c("exponential","linear")){
-			out<-fit_t_general(tree=smap,data=data,fun=new_list_function,class.df=NULL,input.times=NULL,error=error, sigma=sigma, beta=beta, model=model,method=method, upper=upper, lower=lower, control=control,diagnostic=diagnostic, echo=echo,constraint=list(sigma=sigma.constraint, beta=beta.constraint))	
+			out<-fit_t_general(tree=smap,data=data,fun=new_list_function,class.df=NULL,input.times=NULL,error=error, sigma=sigma, beta=beta, model=model,method=method, upper=up, lower=lower, control=control,diagnostic=diagnostic, echo=echo,constraint=list(sigma=sigma.constraint, beta=beta.constraint))	
 		} else {
-			out.exp<-fit_t_general(tree=smap,data=data,fun=new_list_function,class.df=NULL,input.times=NULL,error=error, sigma=sigma, beta=beta, model="exponential",method=method, upper=upper, lower=lower, control=control,diagnostic=diagnostic, echo=echo,constraint=list(sigma=sigma.constraint, beta=beta.constraint))	
-			out.lin<-fit_t_general(tree=smap,data=data,fun=new_list_function,class.df=NULL,input.times=NULL,error=error, sigma=sigma, beta=beta, model="linear",method=method, upper=upper, lower=lower, control=control,diagnostic=diagnostic, echo=echo,constraint=list(sigma=sigma.constraint, beta=beta.constraint))	
+			out.exp<-fit_t_general(tree=smap,data=data,fun=new_list_function,class.df=NULL,input.times=NULL,error=error, sigma=sigma, beta=beta, model="exponential",method=method, upper=up, lower=lower, control=control,diagnostic=diagnostic, echo=echo,constraint=list(sigma=sigma.constraint, beta=beta.constraint))	
+			out.lin<-fit_t_general(tree=smap,data=data,fun=new_list_function,class.df=NULL,input.times=NULL,error=error, sigma=sigma, beta=beta, model="linear",method=method, upper=up, lower=lower, control=control,diagnostic=diagnostic, echo=echo,constraint=list(sigma=sigma.constraint, beta=beta.constraint))	
 			out<-list(exponential.fit=out.exp,linear.fit=out.lin)
 		}
 
@@ -79,11 +81,13 @@ if(is.null(regime.map)){ 	# single slope version
 		sigma.constraint<-rep(1, dim(regime.map$mapped.edge)[2])
 		beta.constraint<-seq(1,by=1,length.out=dim(regime.map$mapped.edge)[2])
 		
+		up=c(rep(upper$beta,length(beta.constraint)),Inf,0)
+		
 		if(model%in%c("exponential","linear")){
-		out<-fit_t_general(tree=regime.map,data=data,fun=new_list_function,input.times=NULL,class.df=NULL,error=error, sigma=sigma, beta=beta, model=model,method=method, upper=upper, lower=lower, control=control,diagnostic=diagnostic, echo=echo,constraint=list(sigma=sigma.constraint, beta=beta.constraint))
+		out<-fit_t_general(tree=regime.map,data=data,fun=new_list_function,input.times=NULL,class.df=NULL,error=error, sigma=sigma, beta=beta, model=model,method=method, upper=up, lower=lower, control=control,diagnostic=diagnostic, echo=echo,constraint=list(sigma=sigma.constraint, beta=beta.constraint))
 		} else{
-		out.exp=fit_t_general(tree=regime.map,data=data,fun=new_list_function,input.times=NULL,class.df=NULL,error=error, sigma=sigma, beta=beta, model="exponential",method=method, upper=upper, lower=lower, control=control,diagnostic=diagnostic, echo=echo,constraint=list(sigma=sigma.constraint, beta=beta.constraint))
-		out.lin=fit_t_general(tree=regime.map,data=data,fun=new_list_function,input.times=NULL,class.df=NULL,error=error, sigma=sigma, beta=beta, model="linear",method=method, upper=upper, lower=lower, control=control,diagnostic=diagnostic, echo=echo,constraint=list(sigma=sigma.constraint, beta=beta.constraint))
+		out.exp=fit_t_general(tree=regime.map,data=data,fun=new_list_function,input.times=NULL,class.df=NULL,error=error, sigma=sigma, beta=beta, model="exponential",method=method, upper=up, lower=lower, control=control,diagnostic=diagnostic, echo=echo,constraint=list(sigma=sigma.constraint, beta=beta.constraint))
+		out.lin=fit_t_general(tree=regime.map,data=data,fun=new_list_function,input.times=NULL,class.df=NULL,error=error, sigma=sigma, beta=beta, model="linear",method=method, upper=up, lower=lower, control=control,diagnostic=diagnostic, echo=echo,constraint=list(sigma=sigma.constraint, beta=beta.constraint))
 		out<-list(exponential.fit=out.exp,linear.fit=out.lin)
 		}
 		
