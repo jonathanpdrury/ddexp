@@ -199,6 +199,7 @@ fit_t_general <- function(tree, data, fun, class.df, input.times, error=NULL, be
       phylo <- BranchtransformMAPS(phylo, beta, mtot, times, fun, sigma, model, errorValue)
       if(return.tree){ return(phylo)}
       if(any(is.na(phylo$edge.length)))  return(1000000)
+	  if(any(phylo$edge.length<0)) return(1000000)
       LL<-mvLL(phylo,dat,method="pic",param=list(estim=FALSE, sigma=1, check=FALSE))
       
     }else{
@@ -225,6 +226,7 @@ fit_t_general <- function(tree, data, fun, class.df, input.times, error=NULL, be
       phylo <- BranchtransformMAPS(phylo, beta, mtot, times, fun, sigma, model, errorValue)
       if(return.tree){ return(phylo)}
       if(any(is.na(phylo$edge.length))) return(1000000) # instead of checking the parameter values as done previously, I return a high-likelihood value when there are NAs in the branch lengths. Note also that returning Inf value doesn't work with L-BFGS-B algorithm
+	  if(any(phylo$edge.length<0)) return(1000000)
       LL<-mvLL(phylo,dat,method="pic",param=list(estim=FALSE, sigma=1, check=FALSE))
       
     }
