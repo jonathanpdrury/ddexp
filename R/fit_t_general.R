@@ -171,7 +171,8 @@ fit_t_general <- function(tree, data, fun, class.df, input.times, error=NULL, be
     phy<-res
     
     if(!is.null(errorValue)){
-      phy$edge.length[index_error]<-phy$edge.length[index_error] + error_meas + errorValue^2
+ 	  phy$edge.length[index_error]<-phy$edge.length[index_error] + error_meas + (errorValue)^2
+
     }
     
     return(phy)
@@ -214,7 +215,7 @@ fit_t_general <- function(tree, data, fun, class.df, input.times, error=NULL, be
         # constrain some values to zero (should be only for beta as sigma=0 is undefined)
         beta[is.na(beta)] <- 0
         
-      if(!is.null(error)) errorValue <- log(param[nbeta+nsigma+1]) else errorValue <- NULL
+      if(!is.null(error)) errorValue <- (param[nbeta+nsigma+1]) else errorValue <- NULL
       
       # test=sigma+(beta*maxN)
       # if(any(test<=0)){
