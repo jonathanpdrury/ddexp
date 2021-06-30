@@ -125,8 +125,13 @@ fit_t_general <- function(tree, data, fun, class.df, input.times, error=NULL, be
       
     }else if(model=="linear"){
       # Clim-lin function
-      f<-function(x, sigma, beta, funInd){sigma+beta*fun[[funInd]](x,df=class.df,times=input.times)}
-     
+      
+      f<-function(x, sigma, beta, funInd){
+          integrand <- sigma+beta*fun[[funInd]](x,df=class.df,times=input.times)
+          if(any(integrand<=1e-10)) return(NA) else return(integrand)
+      	}
+
+
     }
     
     # Loops over the edges
